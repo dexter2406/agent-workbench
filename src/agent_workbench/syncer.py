@@ -42,6 +42,11 @@ SHARED_ASSETS = [
     (Path("core") / "rules" / "planning-with-files.md", Path(".claude") / "rules" / "planning-with-files.md"),
     (Path("core") / "plans" / "workplans" / "README.md", Path("plans") / "workplans" / "README.md"),
 ]
+SHARED_SCRIPTS = [
+    Path("plan_tracker.py"),
+    Path("sync_worktree_config.ps1"),
+    Path("sync_worktree_config.sh"),
+]
 
 
 @dataclass
@@ -71,8 +76,8 @@ def apply_manifest(target: Path, manifest: AgentAssetsManifest) -> list[str]:
     _install_shared_assets(target, manifest)
     actions.extend(f"synced {destination.as_posix()}" for _, destination in SHARED_ASSETS)
 
-    _install_plan_tracker(target, manifest)
-    actions.append("synced scripts/plan_tracker.py")
+    _install_shared_scripts(target, manifest)
+    actions.extend(f"synced scripts/{script.name}" for script in SHARED_SCRIPTS)
 
     for skill in manifest.skills:
         destinations = _destinations_for_skill(skill, manifest, target, _home_dir())
@@ -170,13 +175,14 @@ def _install_templates(target: Path, manifest: AgentAssetsManifest) -> None:
         destination.write_text(content, encoding="utf-8")
 
 
-def _install_plan_tracker(target: Path, manifest: AgentAssetsManifest) -> None:
-    """Sync the shared plan tracker script into the business repository."""
-    source = manifest.source_repo / "core" / "scripts" / "plan_tracker.py"
-    destination = target / "scripts" / "plan_tracker.py"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if source.exists():
-        destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+def _install_shared_scripts(target: Path, manifest: AgentAssetsManifest) -> None:
+    """Sync shared tool scripts into the business repository."""
+    for script in SHARED_SCRIPTS:
+        source = manifest.source_repo / "core" / "scripts" / script
+        destination = target / "scripts" / script
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source.exists():
+            destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def _install_shared_assets(target: Path, manifest: AgentAssetsManifest) -> None:

@@ -11,6 +11,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
 def run_cli(*args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -50,6 +51,14 @@ def create_source_repo(root: Path) -> Path:
     (root / "core" / "scripts").mkdir(parents=True)
     (root / "core" / "scripts" / "plan_tracker.py").write_text(
         '"""Minimal plan tracker smoke target."""\nimport sys\nif __name__ == "__main__":\n    cmd = sys.argv[1] if len(sys.argv) > 1 else ""\n    if cmd == "list":\n        print("list ok")\n    elif cmd == "quick-plan":\n        print("quick-plan ok")\n    else:\n        print("unknown")\n',
+        encoding="utf-8",
+    )
+    (root / "core" / "scripts" / "sync_worktree_config.ps1").write_text(
+        'Write-Host "sync ps1 ok"\n',
+        encoding="utf-8",
+    )
+    (root / "core" / "scripts" / "sync_worktree_config.sh").write_text(
+        '#!/usr/bin/env bash\necho "sync sh ok"\n',
         encoding="utf-8",
     )
     return root
@@ -99,6 +108,9 @@ def test_apply_installs_project_and_global_assets_and_updates_gitignore(tmp_path
     assert (business_repo / ".agents" / "docs" / "wt-pm-workflow.md").exists()
     assert (business_repo / ".claude" / "rules" / "planning-with-files.md").exists()
     assert (business_repo / "plans" / "workplans" / "README.md").exists()
+    assert (business_repo / "scripts" / "plan_tracker.py").exists()
+    assert (business_repo / "scripts" / "sync_worktree_config.ps1").exists()
+    assert (business_repo / "scripts" / "sync_worktree_config.sh").exists()
     assert (fake_home / ".claude" / "skills" / "demo-skill" / "SKILL.md").exists()
     assert (fake_home / ".codex" / "skills" / "demo-skill" / "SKILL.md").exists()
     gitignore = (business_repo / ".gitignore").read_text(encoding="utf-8")

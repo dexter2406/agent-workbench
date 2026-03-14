@@ -62,6 +62,7 @@ Installation behavior:
 - If `claude` is enabled, the same project-level skills are also installed to `.claude/skills/`
 - Global skills are installed to `~/.claude/skills/`, `~/.codex/skills/`, or `~/.gemini/skills/` depending on enabled agents
 - Shared workflow assets are synced to `.agents/docs/`, `.claude/rules/`, and `plans/workplans/README.md`
+- Shared tool scripts are synced to `scripts/plan_tracker.py`, `scripts/sync_worktree_config.ps1`, and `scripts/sync_worktree_config.sh`
 
 Notes:
 - `agent-workbench` is the control plane. `apply`, `verify`, `pull`, and `push` are intended to run from the tool repo, not from inside the business repo.
