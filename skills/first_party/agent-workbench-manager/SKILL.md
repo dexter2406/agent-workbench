@@ -1,16 +1,16 @@
 ---
 name: agent-workbench-manager
-description: Personal-use bootstrap manager for agent-workbench. Interprets natural language requests to install, verify, pull, or push first-party agent assets from the tool repo into a target business repository.
+description: Personal-use bootstrap manager for agent-workbench. Interprets natural language requests to install, verify, or pull first-party agent assets from the tool repo into a target business repository.
 user-invokable: true
 ---
 
 # agent-workbench-manager
 
-Use this skill from inside your cloned `agent-workbench` repository after the target business repository has an `agent_assets.yaml`.
+Use this skill from inside your cloned `agent-workbench` repository. If the target business repository has no `agent_assets.yaml`, load the default full first-party asset set.
 
 ## Purpose
 
-This skill is the natural-language entrypoint for personal `agent-workbench` management. It wraps the underlying bootstrap CLI so the user does not need to remember `apply`, `verify`, `pull`, or `push` commands.
+This skill is the natural-language entrypoint for personal `agent-workbench` management. It wraps the underlying bootstrap CLI so the user does not need to remember `apply`, `verify`, or `pull` commands.
 
 `agent-workbench` is the control plane. The business repository is a target, not the place where management starts.
 
@@ -18,7 +18,7 @@ This skill is the natural-language entrypoint for personal `agent-workbench` man
 
 Before running any command, confirm all of the following:
 - The target business repository path is known.
-- `agent_assets.yaml` exists in the target repository.
+- Either `agent_assets.yaml` exists in the target repository, or the user wants the default full first-party asset set.
 - If relying on manifest metadata, `source_repo` exists and is a local filesystem path.
 - `skills` is non-empty.
 
@@ -33,8 +33,7 @@ Examples of user intent this skill should handle:
 - `验证 Claude skills 和 plan_tracker`
 - `从工具库同步这个项目的最新 assets`
 - `刷新这个项目里的 skills`
-- `把 wt-dev 的改动同步回工具库`
-- `回推 planning-with-files 的修改`
+- `在没有 agent_assets.yaml 的仓库里直接加载默认 assets`
 
 ## Action Mapping
 
@@ -42,17 +41,17 @@ Map user intent to exactly one CLI action:
 - install / load / setup / initialize => `bootstrap apply --target-repo <path>`
 - verify / check / smoke / validate => `bootstrap verify --target-repo <path>`
 - update from tool repo / sync latest / refresh => `bootstrap pull --target-repo <path>`
-- send changes back / promote my skill edits / sync back => `bootstrap push --target-repo <path> --skill <name>`
+- load defaults / initialize assets without a manifest => `bootstrap apply --target-repo <path>`
 
 If the request mixes install and verify, run `apply` first and then `verify` automatically.
 
-Unless the user explicitly overrides it, the active `agent-workbench` checkout is the source repo used for sync and push-back.
+Unless the user explicitly overrides it, the active `agent-workbench` checkout is the source repo used for sync.
 
 ## Config Defaults
 
 Unless a skill entry says otherwise:
 - `scope` defaults to `project`
-- `mode` defaults to `sync`
+- `mode` defaults to `link`
 
 `task_prefix` is optional and may be omitted when the project does not use task-tracker conventions.
 
@@ -62,19 +61,11 @@ Unless a skill entry says otherwise:
 - If `claude` is enabled, project-level skills are also mirrored into `.claude/skills/`
 - Global skills install into user-level directories such as `~/.claude/skills/`
 
-## Push Rules
-
-- Do not read or require a `pushable` field.
-- Only push skills that the user explicitly names.
-- Only push skills already declared in `agent_assets.yaml`.
-- Prefer the project-scope copy when the same skill exists in both project and global locations.
-
 ## Verification Interpretation
 
 When running `verify`, report each result as `PASS`, `FAIL`, or `SKIP`.
 
 Minimum checks expected:
-- rendered templates (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md` when configured)
 - project-scope skills in repo-local paths
 - global-scope skills in user-level paths
 - shared workflow assets in `.agents/docs/`, `.claude/rules/`, and `plans/workplans/`
@@ -89,6 +80,6 @@ Manual checklist to include after a successful install+verify flow:
 - Do not clone `source_repo`; the user manages cloning manually.
 - Do not rewrite `agent_assets.yaml` unless explicitly asked.
 - Do not assume the business repo is the control plane; require or infer a target repo path first.
-- Do not push business-code changes; `push` is for explicitly named skills only.
+- Do not treat business-repo copies as editable source; changes belong in `agent-workbench`.
 - If `source_repo` is missing, stop and tell the user to update the local path.
 - If verify fails, do not claim installation is complete.

@@ -12,7 +12,7 @@ import yaml
 SUPPORTED_AGENTS = ("codex", "claude", "gemini")
 SUPPORTED_SCOPES = ("project", "global")
 SUPPORTED_MODES = ("sync", "link")
-DEFAULT_VERIFY_CHECKS = ["templates", "project_skills", "global_skills", "shared_assets", "plan_tracker"]
+DEFAULT_VERIFY_CHECKS = ["project_skills", "global_skills", "shared_assets", "plan_tracker"]
 
 
 @dataclass
@@ -21,17 +21,16 @@ class SkillConfig:
 
     name: str
     scope: str = "project"
-    mode: str = "sync"
+    mode: str = "link"
 
 
 @dataclass
 class AgentAssetsManifest:
-    """Structured manifest used to apply, verify, pull, and push personal assets."""
+    """Structured manifest used to apply, verify, and pull personal assets."""
 
     source_repo: Path
     agents: list[str]
     skills: list[SkillConfig]
-    templates: list[str] = field(default_factory=list)
     verify: list[str] = field(default_factory=lambda: list(DEFAULT_VERIFY_CHECKS))
     task_prefix: str | None = None
 
@@ -40,6 +39,17 @@ def load_manifest(path: Path) -> AgentAssetsManifest:
     """Load and validate a consumer manifest from YAML."""
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return manifest_from_data(data, base_dir=path.parent)
+
+
+def default_manifest(source_repo: Path) -> AgentAssetsManifest:
+    """Build the default manifest used when the target repo has no agent_assets.yaml."""
+    resolved_source = source_repo.resolve()
+    return AgentAssetsManifest(
+        source_repo=resolved_source,
+        agents=list(SUPPORTED_AGENTS),
+        skills=[SkillConfig(name=name, mode="link") for name in discover_first_party_skills(resolved_source)],
+        verify=list(DEFAULT_VERIFY_CHECKS),
+    )
 
 
 def manifest_from_data(data: dict[str, Any], base_dir: Path) -> AgentAssetsManifest:
@@ -54,7 +64,6 @@ def manifest_from_data(data: dict[str, Any], base_dir: Path) -> AgentAssetsManif
         raise ValueError(f"source_repo does not exist: {source_repo}")
 
     agents = _normalize_agent_list(data.get("agents"), field_name="agents")
-    templates = _normalize_agent_list(data.get("templates"), field_name="templates", default=agents)
     verify = _normalize_string_list(data.get("verify"), field_name="verify", default=list(DEFAULT_VERIFY_CHECKS))
     if "third_party_skills" in data:
         raise ValueError("Manifest field third_party_skills is no longer supported; use a separate open-skills list file and script instead")
@@ -81,7 +90,7 @@ def manifest_from_data(data: dict[str, Any], base_dir: Path) -> AgentAssetsManif
         scope = str(item.get("scope", "project")).strip().lower() or "project"
         if scope not in SUPPORTED_SCOPES:
             raise ValueError(f"Unsupported scope '{scope}' for skill '{name}'")
-        mode = str(item.get("mode", "sync")).strip().lower() or "sync"
+        mode = str(item.get("mode", "link")).strip().lower() or "link"
         if mode not in SUPPORTED_MODES:
             raise ValueError(f"Unsupported mode '{mode}' for skill '{name}'")
         skills.append(SkillConfig(name=name, scope=scope, mode=mode))
@@ -90,10 +99,23 @@ def manifest_from_data(data: dict[str, Any], base_dir: Path) -> AgentAssetsManif
         source_repo=source_repo,
         agents=agents,
         skills=skills,
-        templates=templates,
         verify=verify,
         task_prefix=task_prefix,
     )
+
+
+def discover_first_party_skills(source_repo: Path) -> list[str]:
+    """Return all first-party skill directory names that contain a SKILL.md file."""
+    skills_root = source_repo / "skills" / "first_party"
+    if not skills_root.exists():
+        return []
+    names: list[str] = []
+    for child in sorted(skills_root.iterdir(), key=lambda item: item.name.lower()):
+        if child.name.startswith(".") or not child.is_dir():
+            continue
+        if (child / "SKILL.md").exists():
+            names.append(child.name)
+    return names
 
 
 def _normalize_agent_list(value: Any, field_name: str, default: list[str] | None = None) -> list[str]:

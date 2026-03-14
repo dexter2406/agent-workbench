@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import argparse
 import sys
-from dataclasses import replace
 from pathlib import Path
 
-from agent_workbench.manifest import AgentAssetsManifest, load_manifest
-from agent_workbench.syncer import apply_manifest, pull_manifest, push_manifest, verify_manifest
+from agent_workbench.manifest import AgentAssetsManifest, default_manifest, load_manifest
+from agent_workbench.syncer import apply_manifest, pull_manifest, verify_manifest
 
 
 def main() -> int:
@@ -27,12 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bootstrap")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for name, handler in (("apply", handle_apply), ("verify", handle_verify), ("pull", handle_pull), ("push", handle_push)):
+    for name, handler in (("apply", handle_apply), ("verify", handle_verify), ("pull", handle_pull)):
         command = subparsers.add_parser(name)
         command.add_argument("--target-repo", required=True)
         command.add_argument("--source-repo")
-        if name == "push":
-            command.add_argument("--skill", action="append", default=[])
         command.set_defaults(handler=handler)
     return parser
 
@@ -62,19 +59,20 @@ def handle_pull(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_push(args: argparse.Namespace) -> int:
-    target = Path(args.target_repo).resolve()
-    manifest = _load_target_manifest(target, args.source_repo)
-    for line in push_manifest(target, manifest, skill_names=args.skill):
-        print(line)
-    return 0
-
-
 def _load_target_manifest(target_repo: Path, source_repo_arg: str | None) -> AgentAssetsManifest:
     """Load the target business manifest and bind it to the active workbench repo."""
-    manifest = load_manifest(target_repo / "agent_assets.yaml")
     bound_source = Path(source_repo_arg).resolve() if source_repo_arg else Path.cwd().resolve()
-    return replace(manifest, source_repo=bound_source)
+    manifest_path = target_repo / "agent_assets.yaml"
+    if not manifest_path.exists():
+        return default_manifest(bound_source)
+    manifest = load_manifest(manifest_path)
+    return AgentAssetsManifest(
+        source_repo=bound_source,
+        agents=manifest.agents,
+        skills=manifest.skills,
+        verify=manifest.verify,
+        task_prefix=manifest.task_prefix,
+    )
 
 
 if __name__ == "__main__":

@@ -76,8 +76,7 @@ def write_manifest(target: Path, source_repo: Path) -> Path:
             "cross-worktree-sync",
             {"name": "demo-skill", "scope": "global"},
         ],
-        "templates": ["codex", "claude"],
-        "verify": ["templates", "project_skills", "global_skills", "shared_assets", "plan_tracker"],
+        "verify": ["project_skills", "global_skills", "shared_assets", "plan_tracker"],
     }
     path = target / "agent_assets.yaml"
     path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
@@ -115,7 +114,6 @@ def test_apply_installs_project_and_global_assets_and_updates_gitignore(tmp_path
     assert (fake_home / ".codex" / "skills" / "demo-skill" / "SKILL.md").exists()
     gitignore = (business_repo / ".gitignore").read_text(encoding="utf-8")
     assert ".agent-workbench/" in gitignore
-    assert "AGENTS.md" in gitignore
 
 
 def test_verify_reports_pass_for_installed_assets_and_plan_tracker(tmp_path: Path) -> None:
@@ -144,8 +142,6 @@ def test_verify_reports_pass_for_installed_assets_and_plan_tracker(tmp_path: Pat
     )
 
     assert result.returncode == 0, result.stderr
-    assert "PASS template:AGENTS.md" in result.stdout
-    assert "PASS template:CLAUDE.md" in result.stdout
     assert "PASS shared_asset:.agents/docs/wt-pm-workflow.md" in result.stdout
     assert "PASS shared_asset:.claude/rules/planning-with-files.md" in result.stdout
     assert "PASS plan_tracker:list" in result.stdout
@@ -183,13 +179,13 @@ def test_pull_refreshes_business_repo_from_source_repo(tmp_path: Path) -> None:
     assert "updated from source" in (business_repo / ".agents" / "skills" / "demo-skill" / "SKILL.md").read_text(encoding="utf-8")
 
 
-def test_push_syncs_selected_project_skill_back_to_source_repo(tmp_path: Path) -> None:
+def test_apply_uses_default_manifest_when_agent_assets_yaml_is_missing(tmp_path: Path) -> None:
     source_repo = create_source_repo(tmp_path / "source-repo")
     business_repo = tmp_path / "business-repo"
     business_repo.mkdir()
-    write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
-    run_cli(
+
+    result = run_cli(
         "apply",
         "--target-repo",
         str(business_repo),
@@ -198,8 +194,18 @@ def test_push_syncs_selected_project_skill_back_to_source_repo(tmp_path: Path) -
         env={"AGENT_ASSETS_HOME": str(fake_home)},
     )
 
-    business_skill = business_repo / ".agents" / "skills" / "demo-skill" / "SKILL.md"
-    business_skill.write_text("changed in project\\n", encoding="utf-8")
+    assert result.returncode == 0, result.stderr
+    assert (business_repo / ".agents" / "skills" / "agent-workbench-manager" / "SKILL.md").exists()
+    assert (business_repo / ".claude" / "skills" / "demo-skill" / "SKILL.md").exists()
+    assert (business_repo / ".gemini" / "skills" / "cross-worktree-sync" / "SKILL.md").exists()
+    assert (business_repo / "scripts" / "plan_tracker.py").exists()
+
+
+def test_push_command_is_not_supported(tmp_path: Path) -> None:
+    source_repo = create_source_repo(tmp_path / "source-repo")
+    business_repo = tmp_path / "business-repo"
+    business_repo.mkdir()
+    write_manifest(business_repo, source_repo)
 
     result = run_cli(
         "push",
@@ -207,13 +213,10 @@ def test_push_syncs_selected_project_skill_back_to_source_repo(tmp_path: Path) -
         str(business_repo),
         "--source-repo",
         str(source_repo),
-        "--skill",
-        "demo-skill",
-        env={"AGENT_ASSETS_HOME": str(fake_home)},
     )
 
-    assert result.returncode == 0, result.stderr
-    assert "changed in project" in (source_repo / "skills" / "first_party" / "demo-skill" / "SKILL.md").read_text(encoding="utf-8")
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr
 
 
 def test_verify_fails_when_required_global_skill_is_missing(tmp_path: Path) -> None:

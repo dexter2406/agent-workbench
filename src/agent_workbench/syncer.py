@@ -1,4 +1,4 @@
-"""Filesystem install, verify, pull, and push logic for personal agent-workbench usage."""
+"""Filesystem install, verify, and pull logic for personal agent-workbench usage."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agent_workbench.manifest import AgentAssetsManifest, SkillConfig
-from agent_workbench.rendering import render_agent_entry
 
 
 PROJECT_SKILL_ROOTS = {
@@ -26,9 +25,6 @@ GLOBAL_SKILL_ROOTS = {
 GITIGNORE_BLOCK = [
     "# agent-workbench",
     ".agent-workbench/",
-    "AGENTS.md",
-    "CLAUDE.md",
-    "GEMINI.md",
     ".agents/",
     ".claude/",
     ".codex/",
@@ -70,9 +66,6 @@ def apply_manifest(target: Path, manifest: AgentAssetsManifest) -> list[str]:
     _ensure_gitignore(target)
     actions.append("updated .gitignore")
 
-    _install_templates(target, manifest)
-    actions.extend(f"rendered {name}" for name in manifest.templates)
-
     _install_shared_assets(target, manifest)
     actions.extend(f"synced {destination.as_posix()}" for _, destination in SHARED_ASSETS)
 
@@ -93,37 +86,10 @@ def pull_manifest(target: Path, manifest: AgentAssetsManifest) -> list[str]:
     return apply_manifest(target, manifest)
 
 
-def push_manifest(target: Path, manifest: AgentAssetsManifest, skill_names: list[str] | None = None) -> list[str]:
-    """Push selected skill changes back to the personal tool repository."""
-    selected = {name.strip() for name in (skill_names or []) if name.strip()}
-    actions: list[str] = []
-    chosen_skills: dict[str, SkillConfig] = {}
-    for skill in manifest.skills:
-        if selected and skill.name not in selected:
-            continue
-        current = chosen_skills.get(skill.name)
-        if current is None or (current.scope == "global" and skill.scope == "project"):
-            chosen_skills[skill.name] = skill
-    for skill in chosen_skills.values():
-        source_candidate = _editable_skill_source(skill, manifest, target, _home_dir())
-        if source_candidate is None or not source_candidate.exists():
-            continue
-        destination = _source_skill_path(manifest, skill)
-        _copy_tree(source_candidate, destination)
-        actions.append(f"pushed {skill.name} -> {destination}")
-    return actions
-
-
 def verify_manifest(target: Path, manifest: AgentAssetsManifest) -> list[VerifyResult]:
     """Run bootstrap smoke checks and collect PASS/FAIL/SKIP results."""
     results: list[VerifyResult] = []
     home = _home_dir()
-
-    if "templates" in manifest.verify:
-        for agent in manifest.templates:
-            entry_path, _ = render_agent_entry(agent, manifest)
-            exists = (target / entry_path).exists()
-            results.append(VerifyResult(status="PASS" if exists else "FAIL", name=f"template:{entry_path.name}"))
 
     if "project_skills" in manifest.verify:
         for skill in manifest.skills:
@@ -166,23 +132,13 @@ def verify_manifest(target: Path, manifest: AgentAssetsManifest) -> list[VerifyR
     return results
 
 
-def _install_templates(target: Path, manifest: AgentAssetsManifest) -> None:
-    """Render selected agent entry files into the business repository."""
-    for agent in manifest.templates:
-        relative_path, content = render_agent_entry(agent, manifest)
-        destination = target / relative_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(content, encoding="utf-8")
-
-
 def _install_shared_scripts(target: Path, manifest: AgentAssetsManifest) -> None:
     """Sync shared tool scripts into the business repository."""
     for script in SHARED_SCRIPTS:
         source = manifest.source_repo / "core" / "scripts" / script
         destination = target / "scripts" / script
-        destination.parent.mkdir(parents=True, exist_ok=True)
         if source.exists():
-            destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            _install_path(source, destination, mode="link")
 
 
 def _install_shared_assets(target: Path, manifest: AgentAssetsManifest) -> None:
@@ -192,8 +148,7 @@ def _install_shared_assets(target: Path, manifest: AgentAssetsManifest) -> None:
         if not source.exists():
             continue
         destination = target / destination_relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        _install_path(source, destination, mode="link")
 
 
 def _ensure_gitignore(target: Path) -> None:
@@ -221,22 +176,6 @@ def _destinations_for_skill(skill: SkillConfig, manifest: AgentAssetsManifest, t
         for agent in manifest.agents:
             destinations.append(home / GLOBAL_SKILL_ROOTS[agent] / skill.name)
     return destinations
-
-
-def _editable_skill_source(skill: SkillConfig, manifest: AgentAssetsManifest, target: Path, home: Path) -> Path | None:
-    """Pick the editable business-side location to push back into the source repo."""
-    if skill.scope == "project":
-        for agent in manifest.agents:
-            for root in PROJECT_SKILL_ROOTS[agent]:
-                candidate = target / root / skill.name
-                if candidate.exists():
-                    return candidate
-        return None
-    for agent in manifest.agents:
-        candidate = home / GLOBAL_SKILL_ROOTS[agent] / skill.name
-        if candidate.exists():
-            return candidate
-    return None
 
 
 def _source_skill_path(manifest: AgentAssetsManifest, skill: SkillConfig) -> Path:
