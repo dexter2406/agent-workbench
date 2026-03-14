@@ -70,7 +70,14 @@ def test_apply_installs_project_and_global_assets_and_updates_gitignore(tmp_path
     write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
 
-    result = run_cli("apply", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    result = run_cli(
+        "apply",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     assert result.returncode == 0, result.stderr
     assert (business_repo / ".agents" / "skills" / "agent-workbench-manager" / "SKILL.md").exists()
@@ -89,10 +96,24 @@ def test_verify_reports_pass_for_installed_assets_and_plan_tracker(tmp_path: Pat
     business_repo.mkdir()
     write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
-    apply_result = run_cli("apply", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    apply_result = run_cli(
+        "apply",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
     assert apply_result.returncode == 0, apply_result.stderr
 
-    result = run_cli("verify", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    result = run_cli(
+        "verify",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     assert result.returncode == 0, result.stderr
     assert "PASS template:AGENTS.md" in result.stdout
@@ -107,12 +128,26 @@ def test_pull_refreshes_business_repo_from_source_repo(tmp_path: Path) -> None:
     business_repo.mkdir()
     write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
-    run_cli("apply", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    run_cli(
+        "apply",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     source_skill = source_repo / "skills" / "first_party" / "demo-skill" / "SKILL.md"
     source_skill.write_text("updated from source\\n", encoding="utf-8")
 
-    result = run_cli("pull", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    result = run_cli(
+        "pull",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     assert result.returncode == 0, result.stderr
     assert "updated from source" in (business_repo / ".agents" / "skills" / "demo-skill" / "SKILL.md").read_text(encoding="utf-8")
@@ -124,12 +159,28 @@ def test_push_syncs_selected_project_skill_back_to_source_repo(tmp_path: Path) -
     business_repo.mkdir()
     write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
-    run_cli("apply", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    run_cli(
+        "apply",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     business_skill = business_repo / ".agents" / "skills" / "demo-skill" / "SKILL.md"
     business_skill.write_text("changed in project\\n", encoding="utf-8")
 
-    result = run_cli("push", "--target", str(business_repo), "--skill", "demo-skill", env={"AGENT_ASSETS_HOME": str(fake_home)})
+    result = run_cli(
+        "push",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        "--skill",
+        "demo-skill",
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     assert result.returncode == 0, result.stderr
     assert "changed in project" in (source_repo / "skills" / "first_party" / "demo-skill" / "SKILL.md").read_text(encoding="utf-8")
@@ -141,7 +192,14 @@ def test_verify_fails_when_required_global_skill_is_missing(tmp_path: Path) -> N
     business_repo.mkdir()
     write_manifest(business_repo, source_repo)
     fake_home = tmp_path / "home"
-    run_cli("apply", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    run_cli(
+        "apply",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
     missing_global = fake_home / ".claude" / "skills" / "demo-skill"
     for child in sorted(missing_global.rglob("*"), reverse=True):
         if child.is_file():
@@ -149,7 +207,14 @@ def test_verify_fails_when_required_global_skill_is_missing(tmp_path: Path) -> N
     if missing_global.exists():
         missing_global.rmdir()
 
-    result = run_cli("verify", "--target", str(business_repo), env={"AGENT_ASSETS_HOME": str(fake_home)})
+    result = run_cli(
+        "verify",
+        "--target-repo",
+        str(business_repo),
+        "--source-repo",
+        str(source_repo),
+        env={"AGENT_ASSETS_HOME": str(fake_home)},
+    )
 
     assert result.returncode != 0
     assert "FAIL global_skill:claude:demo-skill" in result.stdout

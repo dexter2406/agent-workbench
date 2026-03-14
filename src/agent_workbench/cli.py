@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from pathlib import Path
 
-from agent_workbench.manifest import load_manifest
+from agent_workbench.manifest import AgentAssetsManifest, load_manifest
 from agent_workbench.syncer import apply_manifest, pull_manifest, push_manifest, verify_manifest
 
 
@@ -28,7 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     for name, handler in (("apply", handle_apply), ("verify", handle_verify), ("pull", handle_pull), ("push", handle_push)):
         command = subparsers.add_parser(name)
-        command.add_argument("--target", required=True)
+        command.add_argument("--target-repo", required=True)
+        command.add_argument("--source-repo")
         if name == "push":
             command.add_argument("--skill", action="append", default=[])
         command.set_defaults(handler=handler)
@@ -36,16 +38,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def handle_apply(args: argparse.Namespace) -> int:
-    target = Path(args.target)
-    manifest = load_manifest(target / "agent_assets.yaml")
+    target = Path(args.target_repo)
+    manifest = _load_target_manifest(target, args.source_repo)
     for line in apply_manifest(target, manifest):
         print(line)
     return 0
 
 
 def handle_verify(args: argparse.Namespace) -> int:
-    target = Path(args.target)
-    manifest = load_manifest(target / "agent_assets.yaml")
+    target = Path(args.target_repo)
+    manifest = _load_target_manifest(target, args.source_repo)
     results = verify_manifest(target, manifest)
     for result in results:
         print(result.render())
@@ -53,19 +55,26 @@ def handle_verify(args: argparse.Namespace) -> int:
 
 
 def handle_pull(args: argparse.Namespace) -> int:
-    target = Path(args.target)
-    manifest = load_manifest(target / "agent_assets.yaml")
+    target = Path(args.target_repo)
+    manifest = _load_target_manifest(target, args.source_repo)
     for line in pull_manifest(target, manifest):
         print(line)
     return 0
 
 
 def handle_push(args: argparse.Namespace) -> int:
-    target = Path(args.target)
-    manifest = load_manifest(target / "agent_assets.yaml")
+    target = Path(args.target_repo)
+    manifest = _load_target_manifest(target, args.source_repo)
     for line in push_manifest(target, manifest, skill_names=args.skill):
         print(line)
     return 0
+
+
+def _load_target_manifest(target_repo: Path, source_repo_arg: str | None) -> AgentAssetsManifest:
+    """Load the target business manifest and bind it to the active workbench repo."""
+    manifest = load_manifest(target_repo / "agent_assets.yaml")
+    bound_source = Path(source_repo_arg).resolve() if source_repo_arg else Path.cwd().resolve()
+    return replace(manifest, source_repo=bound_source)
 
 
 if __name__ == "__main__":

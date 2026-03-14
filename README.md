@@ -13,20 +13,20 @@ Personal agent workflow assets and bootstrap tooling for Codex, Claude, and Gemi
 ## Recommended workflow
 
 1. Manually clone your personal `agent-workbench` repo to a local path.
-2. Add `agent_assets.yaml` to the business repository.
-3. Sync the `agent-workbench-manager` skill into the project or your global skill directory.
-4. Use natural language to drive management actions, for example:
-   - ???????? agent assets ????
-   - ??????????? assets?
-   - ?????????? skills ???????
+2. Add `agent_assets.yaml` to the target business repository.
+3. Open the `agent-workbench` repo when you want to sync or verify assets.
+4. Use the `agent-workbench-manager` skill in natural language, for example:
+   - `加载这个项目的 agent assets 并验证`
+   - `从工具库同步这个项目的最新 skills`
+   - `把 wt-dev 的改动回推到工具库`
 
-The CLI remains available as the execution layer and fallback:
+The CLI remains available as the execution layer and fallback. Commands are launched from `agent-workbench`, and the business repo is passed as `--target-repo`:
 
 ```bash
-python -m agent_workbench.cli apply --target ../my-project
-python -m agent_workbench.cli verify --target ../my-project
-python -m agent_workbench.cli pull --target ../my-project
-python -m agent_workbench.cli push --target ../my-project --skill wt-dev
+python -m agent_workbench.cli apply --target-repo ../my-project
+python -m agent_workbench.cli verify --target-repo ../my-project
+python -m agent_workbench.cli pull --target-repo ../my-project
+python -m agent_workbench.cli push --target-repo ../my-project --skill wt-dev
 ```
 
 ## Consumer manifest
@@ -61,5 +61,7 @@ Installation behavior:
 - Global skills are installed to `~/.claude/skills/`, `~/.codex/skills/`, or `~/.gemini/skills/` depending on enabled agents
 
 Notes:
+- `agent-workbench` is the control plane. `apply`, `verify`, `pull`, and `push` are intended to run from the tool repo, not from inside the business repo.
+- `source_repo` stays in `agent_assets.yaml` mainly as a source-of-truth pointer for local setups and push-back discovery; CLI calls from `agent-workbench` will use the current tool repo by default.
 - `task_prefix` is optional and only matters if your project wants to reuse task-tracker conventions.
 - `push` no longer reads a `pushable` flag; you choose what to push by passing `--skill <name>`.

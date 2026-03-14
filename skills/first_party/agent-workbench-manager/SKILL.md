@@ -1,22 +1,25 @@
 ---
 name: agent-workbench-manager
-description: Personal-use bootstrap manager for agent-workbench. Interprets natural language requests to install, verify, pull, or push first-party agent assets for the current business repository.
+description: Personal-use bootstrap manager for agent-workbench. Interprets natural language requests to install, verify, pull, or push first-party agent assets from the tool repo into a target business repository.
 user-invokable: true
 ---
 
 # agent-workbench-manager
 
-Use this skill after you have manually cloned your personal `agent-workbench` repository and configured `agent_assets.yaml` in the current business repository.
+Use this skill from inside your cloned `agent-workbench` repository after the target business repository has an `agent_assets.yaml`.
 
 ## Purpose
 
 This skill is the natural-language entrypoint for personal `agent-workbench` management. It wraps the underlying bootstrap CLI so the user does not need to remember `apply`, `verify`, `pull`, or `push` commands.
 
+`agent-workbench` is the control plane. The business repository is a target, not the place where management starts.
+
 ## Preconditions
 
 Before running any command, confirm all of the following:
-- `agent_assets.yaml` exists in the current repository.
-- `source_repo` exists and is a local filesystem path.
+- The target business repository path is known.
+- `agent_assets.yaml` exists in the target repository.
+- If relying on manifest metadata, `source_repo` exists and is a local filesystem path.
 - `skills` is non-empty.
 
 If any precondition fails, stop and tell the user exactly what is missing.
@@ -24,24 +27,26 @@ If any precondition fails, stop and tell the user exactly what is missing.
 ## Trigger Phrases
 
 Examples of user intent this skill should handle:
-- ???????? agent assets?
-- ???????? codex/claude skills?
-- ??? agent-workbench ?????
-- ??? Claude skills ? plan_tracker?
-- ??????????? assets?
-- ?? agent-workbench ???????
-- ?????? skill ???????
-- ????????? skills ???
+- `加载这个项目的 agent assets`
+- `给这个项目装上 codex 和 claude skills`
+- `检查这个项目的 agent-workbench 是否可用`
+- `验证 Claude skills 和 plan_tracker`
+- `从工具库同步这个项目的最新 assets`
+- `刷新这个项目里的 skills`
+- `把 wt-dev 的改动同步回工具库`
+- `回推 planning-with-files 的修改`
 
 ## Action Mapping
 
 Map user intent to exactly one CLI action:
-- install / load / setup / initialize => `bootstrap apply`
-- verify / check / smoke / validate => `bootstrap verify`
-- update from tool repo / sync latest / refresh => `bootstrap pull`
-- send changes back / promote my skill edits / sync back => `bootstrap push --skill <name>`
+- install / load / setup / initialize => `bootstrap apply --target-repo <path>`
+- verify / check / smoke / validate => `bootstrap verify --target-repo <path>`
+- update from tool repo / sync latest / refresh => `bootstrap pull --target-repo <path>`
+- send changes back / promote my skill edits / sync back => `bootstrap push --target-repo <path> --skill <name>`
 
 If the request mixes install and verify, run `apply` first and then `verify` automatically.
+
+Unless the user explicitly overrides it, the active `agent-workbench` checkout is the source repo used for sync and push-back.
 
 ## Config Defaults
 
@@ -82,6 +87,7 @@ Manual checklist to include after a successful install+verify flow:
 
 - Do not clone `source_repo`; the user manages cloning manually.
 - Do not rewrite `agent_assets.yaml` unless explicitly asked.
+- Do not assume the business repo is the control plane; require or infer a target repo path first.
 - Do not push business-code changes; `push` is for explicitly named skills only.
 - If `source_repo` is missing, stop and tell the user to update the local path.
 - If verify fails, do not claim installation is complete.
