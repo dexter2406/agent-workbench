@@ -12,7 +12,7 @@ import yaml
 SUPPORTED_AGENTS = ("codex", "claude", "gemini")
 SUPPORTED_SCOPES = ("project", "global")
 SUPPORTED_MODES = ("sync", "link")
-DEFAULT_VERIFY_CHECKS = ["templates", "project_skills", "global_skills", "plan_tracker"]
+DEFAULT_VERIFY_CHECKS = ["templates", "project_skills", "global_skills", "shared_assets", "plan_tracker"]
 
 
 @dataclass

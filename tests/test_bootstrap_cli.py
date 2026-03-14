@@ -36,6 +36,17 @@ def create_source_repo(root: Path) -> Path:
     (root / "skills" / "first_party" / "demo-skill" / "SKILL.md").write_text("---\nname: demo-skill\n---\n", encoding="utf-8")
     (root / "skills" / "first_party" / "agent-workbench-manager").mkdir(parents=True)
     (root / "skills" / "first_party" / "agent-workbench-manager" / "SKILL.md").write_text("---\nname: agent-workbench-manager\n---\n", encoding="utf-8")
+    (root / "skills" / "first_party" / "cross-worktree-sync").mkdir(parents=True)
+    (root / "skills" / "first_party" / "cross-worktree-sync" / "SKILL.md").write_text("---\nname: cross-worktree-sync\n---\n", encoding="utf-8")
+    (root / "core" / "docs").mkdir(parents=True)
+    (root / "core" / "docs" / "wt-pm-workflow.md").write_text("# wt-pm workflow\n", encoding="utf-8")
+    (root / "core" / "rules").mkdir(parents=True)
+    (root / "core" / "rules" / "api-contract.md").write_text("# api contract\n", encoding="utf-8")
+    (root / "core" / "rules" / "collaboration-boundaries.md").write_text("# collaboration boundaries\n", encoding="utf-8")
+    (root / "core" / "rules" / "dod-and-safety.md").write_text("# dod and safety\n", encoding="utf-8")
+    (root / "core" / "rules" / "planning-with-files.md").write_text("# planning with files\n", encoding="utf-8")
+    (root / "core" / "plans" / "workplans").mkdir(parents=True)
+    (root / "core" / "plans" / "workplans" / "README.md").write_text("# workplans readme\n", encoding="utf-8")
     (root / "core" / "scripts").mkdir(parents=True)
     (root / "core" / "scripts" / "plan_tracker.py").write_text(
         '"""Minimal plan tracker smoke target."""\nimport sys\nif __name__ == "__main__":\n    cmd = sys.argv[1] if len(sys.argv) > 1 else ""\n    if cmd == "list":\n        print("list ok")\n    elif cmd == "quick-plan":\n        print("quick-plan ok")\n    else:\n        print("unknown")\n',
@@ -53,10 +64,11 @@ def write_manifest(target: Path, source_repo: Path) -> Path:
         "skills": [
             "agent-workbench-manager",
             "demo-skill",
+            "cross-worktree-sync",
             {"name": "demo-skill", "scope": "global"},
         ],
         "templates": ["codex", "claude"],
-        "verify": ["templates", "project_skills", "global_skills", "plan_tracker"],
+        "verify": ["templates", "project_skills", "global_skills", "shared_assets", "plan_tracker"],
     }
     path = target / "agent_assets.yaml"
     path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
@@ -82,7 +94,11 @@ def test_apply_installs_project_and_global_assets_and_updates_gitignore(tmp_path
     assert result.returncode == 0, result.stderr
     assert (business_repo / ".agents" / "skills" / "agent-workbench-manager" / "SKILL.md").exists()
     assert (business_repo / ".agents" / "skills" / "demo-skill" / "SKILL.md").exists()
+    assert (business_repo / ".agents" / "skills" / "cross-worktree-sync" / "SKILL.md").exists()
     assert (business_repo / ".claude" / "skills" / "demo-skill" / "SKILL.md").exists()
+    assert (business_repo / ".agents" / "docs" / "wt-pm-workflow.md").exists()
+    assert (business_repo / ".claude" / "rules" / "planning-with-files.md").exists()
+    assert (business_repo / "plans" / "workplans" / "README.md").exists()
     assert (fake_home / ".claude" / "skills" / "demo-skill" / "SKILL.md").exists()
     assert (fake_home / ".codex" / "skills" / "demo-skill" / "SKILL.md").exists()
     gitignore = (business_repo / ".gitignore").read_text(encoding="utf-8")
@@ -118,6 +134,8 @@ def test_verify_reports_pass_for_installed_assets_and_plan_tracker(tmp_path: Pat
     assert result.returncode == 0, result.stderr
     assert "PASS template:AGENTS.md" in result.stdout
     assert "PASS template:CLAUDE.md" in result.stdout
+    assert "PASS shared_asset:.agents/docs/wt-pm-workflow.md" in result.stdout
+    assert "PASS shared_asset:.claude/rules/planning-with-files.md" in result.stdout
     assert "PASS plan_tracker:list" in result.stdout
     assert "PASS global_skill:claude:demo-skill" in result.stdout
 

@@ -7,7 +7,7 @@ Personal agent workflow assets and bootstrap tooling for Codex, Claude, and Gemi
 - A unified first-party skill: `agent-workbench-manager`
 - Personal-use bootstrap CLI with `apply`, `verify`, `pull`, and `push`
 - Project-local and user-global skill installation
-- Smoke verification for rendered templates, installed skills, and `plan_tracker.py`
+- Smoke verification for rendered templates, installed skills, shared docs/rules, and `plan_tracker.py`
 - First-party assets that can be pulled into a business repository and pushed back to the tool repo
 
 ## Recommended workflow
@@ -39,6 +39,7 @@ agents:
 skills:
   - agent-workbench-manager
   - planning-with-files
+  - cross-worktree-sync
   - name: wt-plan
     scope: global
 templates:
@@ -48,6 +49,7 @@ verify:
   - templates
   - project_skills
   - global_skills
+  - shared_assets
   - plan_tracker
 ```
 
@@ -59,6 +61,7 @@ Installation behavior:
 - Project-level skills are always installed to `.agents/skills/`
 - If `claude` is enabled, the same project-level skills are also installed to `.claude/skills/`
 - Global skills are installed to `~/.claude/skills/`, `~/.codex/skills/`, or `~/.gemini/skills/` depending on enabled agents
+- Shared workflow assets are synced to `.agents/docs/`, `.claude/rules/`, and `plans/workplans/README.md`
 
 Notes:
 - `agent-workbench` is the control plane. `apply`, `verify`, `pull`, and `push` are intended to run from the tool repo, not from inside the business repo.

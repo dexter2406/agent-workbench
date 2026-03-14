@@ -5,6 +5,7 @@ agents:
 skills:
   - agent-workbench-manager
   - planning-with-files
+  - cross-worktree-sync
   - name: wt-plan
     scope: global
 templates:
@@ -14,4 +15,5 @@ verify:
   - templates
   - project_skills
   - global_skills
+  - shared_assets
   - plan_tracker

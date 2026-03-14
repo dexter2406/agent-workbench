@@ -77,6 +77,7 @@ Minimum checks expected:
 - rendered templates (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md` when configured)
 - project-scope skills in repo-local paths
 - global-scope skills in user-level paths
+- shared workflow assets in `.agents/docs/`, `.claude/rules/`, and `plans/workplans/`
 - `scripts/plan_tracker.py list`
 
 Manual checklist to include after a successful install+verify flow:

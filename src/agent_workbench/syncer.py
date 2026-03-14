@@ -34,6 +34,14 @@ GITIGNORE_BLOCK = [
     ".codex/",
     ".gemini/",
 ]
+SHARED_ASSETS = [
+    (Path("core") / "docs" / "wt-pm-workflow.md", Path(".agents") / "docs" / "wt-pm-workflow.md"),
+    (Path("core") / "rules" / "api-contract.md", Path(".claude") / "rules" / "api-contract.md"),
+    (Path("core") / "rules" / "collaboration-boundaries.md", Path(".claude") / "rules" / "collaboration-boundaries.md"),
+    (Path("core") / "rules" / "dod-and-safety.md", Path(".claude") / "rules" / "dod-and-safety.md"),
+    (Path("core") / "rules" / "planning-with-files.md", Path(".claude") / "rules" / "planning-with-files.md"),
+    (Path("core") / "plans" / "workplans" / "README.md", Path("plans") / "workplans" / "README.md"),
+]
 
 
 @dataclass
@@ -59,6 +67,9 @@ def apply_manifest(target: Path, manifest: AgentAssetsManifest) -> list[str]:
 
     _install_templates(target, manifest)
     actions.extend(f"rendered {name}" for name in manifest.templates)
+
+    _install_shared_assets(target, manifest)
+    actions.extend(f"synced {destination.as_posix()}" for _, destination in SHARED_ASSETS)
 
     _install_plan_tracker(target, manifest)
     actions.append("synced scripts/plan_tracker.py")
@@ -128,11 +139,21 @@ def verify_manifest(target: Path, manifest: AgentAssetsManifest) -> list[VerifyR
                 destination = home / GLOBAL_SKILL_ROOTS[agent] / skill.name
                 results.append(VerifyResult(status="PASS" if destination.exists() else "FAIL", name=f"global_skill:{agent}:{skill.name}"))
 
+    if "shared_assets" in manifest.verify:
+        for _, destination in SHARED_ASSETS:
+            resolved = target / destination
+            results.append(
+                VerifyResult(
+                    status="PASS" if resolved.exists() else "FAIL",
+                    name=f"shared_asset:{destination.as_posix()}",
+                )
+            )
+
     if "plan_tracker" in manifest.verify:
         tracker = target / "scripts" / "plan_tracker.py"
         if tracker.exists():
             command = [sys.executable, str(tracker), "list"]
-            completed = subprocess.run(command, cwd=str(target), capture_output=True, text=True, check=False)
+            completed = subprocess.run(command, cwd=str(target.resolve()), capture_output=True, text=True, check=False)
             results.append(VerifyResult(status="PASS" if completed.returncode == 0 else "FAIL", name="plan_tracker:list", detail=completed.stdout.strip() or completed.stderr.strip()))
         else:
             results.append(VerifyResult(status="FAIL", name="plan_tracker:list", detail="missing scripts/plan_tracker.py"))
@@ -155,6 +176,17 @@ def _install_plan_tracker(target: Path, manifest: AgentAssetsManifest) -> None:
     destination = target / "scripts" / "plan_tracker.py"
     destination.parent.mkdir(parents=True, exist_ok=True)
     if source.exists():
+        destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+
+def _install_shared_assets(target: Path, manifest: AgentAssetsManifest) -> None:
+    """Sync shared workflow docs and rules into the business repository."""
+    for source_relative, destination_relative in SHARED_ASSETS:
+        source = manifest.source_repo / source_relative
+        if not source.exists():
+            continue
+        destination = target / destination_relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
 
 

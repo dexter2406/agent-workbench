@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def handle_apply(args: argparse.Namespace) -> int:
-    target = Path(args.target_repo)
+    target = Path(args.target_repo).resolve()
     manifest = _load_target_manifest(target, args.source_repo)
     for line in apply_manifest(target, manifest):
         print(line)
@@ -46,7 +46,7 @@ def handle_apply(args: argparse.Namespace) -> int:
 
 
 def handle_verify(args: argparse.Namespace) -> int:
-    target = Path(args.target_repo)
+    target = Path(args.target_repo).resolve()
     manifest = _load_target_manifest(target, args.source_repo)
     results = verify_manifest(target, manifest)
     for result in results:
@@ -55,7 +55,7 @@ def handle_verify(args: argparse.Namespace) -> int:
 
 
 def handle_pull(args: argparse.Namespace) -> int:
-    target = Path(args.target_repo)
+    target = Path(args.target_repo).resolve()
     manifest = _load_target_manifest(target, args.source_repo)
     for line in pull_manifest(target, manifest):
         print(line)
@@ -63,7 +63,7 @@ def handle_pull(args: argparse.Namespace) -> int:
 
 
 def handle_push(args: argparse.Namespace) -> int:
-    target = Path(args.target_repo)
+    target = Path(args.target_repo).resolve()
     manifest = _load_target_manifest(target, args.source_repo)
     for line in push_manifest(target, manifest, skill_names=args.skill):
         print(line)
