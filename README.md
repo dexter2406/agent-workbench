@@ -79,14 +79,14 @@ agent-workbench/
 ├── registry/
 │   ├── skills.md               ← 第三方 skills 备忘清单（手动安装，不参与 install.sh）
 │   └── plugins.md              ← MCP/plugin 备忘清单
-└── docs/design/                ← workbench 自身的设计规范
+└── docs/workbench-design/                ← workbench 自身的设计规范
 ```
 
 ---
 
 ## 添加新 Skill
 
-1. 在 `skills/` 下创建目录，加 `SKILL.md`（frontmatter 格式见 [design/02-skills-spec.md](docs/design/02-skills-spec.md)）
+1. 在 `skills/` 下创建目录，加 `SKILL.md`（frontmatter 格式见 [workbench-design/02-skills-spec.md](docs/workbench-workbench-design/02-skills-spec.md)）
 2. 重跑 `install.sh` 创建新软链接
 
 ---
