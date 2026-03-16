@@ -1,7 +1,7 @@
 ---
 name: planning-with-files
 version: "2.10.0"
-description: Implements Manus-style file-based planning for complex tasks. In bills__frontend, this skill is customized to bind plans with plans/todo_current.md and create per-plan files under plans/workplans.
+description: Implements Manus-style file-based planning for complex tasks. In bills__frontend, this skill is customized to bind tasks with plans/todo_current.md and create per-task workplan directories under plans/workplans.
 user-invocable: true
 allowed-tools:
   - Read
@@ -59,10 +59,10 @@ Work like Manus: Use persistent markdown files as your "working memory on disk."
 
 ## Project Customization (bills__frontend)
 
-This repository uses a **task table + per-plan files** workflow:
+This repository uses a **task table + per-task workplan directory** workflow:
 
 - Task source of truth: `plans/todo_current.md`
-- Plan files live in `plans/workplans/` and use `<name>.<plan_id>.md`
+- Workplan files live in `plans/workplans/<task_id>/`
 - Status lifecycle is strict: `UNPLANNED -> PLANNED -> DONE`
 
 Use these fast trigger phrases:
@@ -70,11 +70,11 @@ Use these fast trigger phrases:
 1. `/planning-with-files 规划还未规划的task`
    - Read all unfinished tasks (`UNPLANNED + PLANNED`).
    - If user specifies scope, use that scope directly.
-   - If scope is not specified, agent auto-selects 1..N tasks using dependency/risk/conflict/impact heuristics and records rationale in `findings.<plan_id>.md`.
-   - Update selected tasks to `PLANNED` with `plan_id` in `plans/todo_current.md`.
+   - If scope is not specified, agent auto-selects one task using dependency/risk/conflict/impact heuristics and records rationale in `plans/workplans/<task_id>/findings.md`.
+   - Update the selected task to `PLANNED` in `plans/todo_current.md`.
 2. `/planning-with-files 读取当前未完成的task progress继续实现`
    - Continue one `PLANNED` task.
-   - If no explicit task or plan is given, pick the first `PLANNED` task in `plans/todo_current.md`.
+   - If no explicit task is given, pick the first `PLANNED` task in `plans/todo_current.md`.
 
 Recommended local commands:
 
@@ -112,14 +112,14 @@ If catchup report shows unsynced context:
 | Location | What Goes There |
 |----------|-----------------|
 | Skill directory (`${CLAUDE_PLUGIN_ROOT}/`) | Templates, scripts, reference docs |
-| Your project directory | `plans/workplans/task_plan.<plan_id>.md`, `plans/workplans/findings.<plan_id>.md`, `plans/workplans/progress.<plan_id>.md` |
+| Your project directory | `plans/workplans/<task_id>/task_plan.md`, `plans/workplans/<task_id>/findings.md`, `plans/workplans/<task_id>/progress.md` |
 
 ## Quick Start
 
 Before ANY complex task:
 
-1. Run `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan ...` to create a `plan_id`
-2. Ensure `task_plan.<plan_id>.md`, `findings.<plan_id>.md`, `progress.<plan_id>.md` are created under `plans/workplans/`
+1. Run `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan --task-id <task_id>` to create the task workplan
+2. Ensure `task_plan.md`, `findings.md`, `progress.md` are created under `plans/workplans/<task_id>/`
 3. Keep `plans/todo_current.md` in sync (`PLANNED` / `DONE` states)
 4. **Re-read plan before decisions** — Refreshes goals in attention window
 5. **Update after each phase** — Mark complete, log errors
@@ -139,15 +139,15 @@ Filesystem = Disk (persistent, unlimited)
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
-| `task_plan.<plan_id>.md` | Phases, progress, decisions | After each phase |
-| `findings.<plan_id>.md` | Research, discoveries | After ANY discovery |
-| `progress.<plan_id>.md` | Session log, test results | Throughout session |
-| `plans/todo_current.md` | Task lifecycle + plan ownership | On every status change |
+| `plans/workplans/<task_id>/task_plan.md` | Phases, progress, decisions | After each phase |
+| `plans/workplans/<task_id>/findings.md` | Research, discoveries | After ANY discovery |
+| `plans/workplans/<task_id>/progress.md` | Session log, test results | Throughout session |
+| `plans/todo_current.md` | Task lifecycle | On every status change |
 
 ## Critical Rules
 
 ### 1. Create Plan First
-Never start a complex task without a `plan_id` and `task_plan.<plan_id>.md`. Non-negotiable.
+Never start a complex task without a `task_id` and `plans/workplans/<task_id>/task_plan.md`. Non-negotiable.
 
 ### 2. The 2-Action Rule
 > "After every 2 view/browser/search operations, IMMEDIATELY save key findings to text files."
@@ -212,9 +212,9 @@ AFTER 3 FAILURES: Escalate to User
 | Just wrote a file | DON'T read | Content still in context |
 | Viewed image/PDF | Write findings NOW | Multimodal → text before lost |
 | Browser returned data | Write to file | Screenshots don't persist |
-| Starting new phase | Read `task_plan.<plan_id>.md` and `findings.<plan_id>.md` | Re-orient if context stale |
+| Starting new phase | Read `plans/workplans/<task_id>/task_plan.md` and `findings.md` | Re-orient if context stale |
 | Error occurred | Read relevant file | Need current state to fix |
-| Resuming after gap | Read task row in `plans/todo_current.md` + per-plan files | Recover state |
+| Resuming after gap | Read task row in `plans/todo_current.md` + that task's workplan directory | Recover state |
 
 ## The 5-Question Reboot Test
 
@@ -222,11 +222,11 @@ If you can answer these, your context management is solid:
 
 | Question | Answer Source |
 |----------|---------------|
-| Where am I? | Current phase in `task_plan.<plan_id>.md` |
+| Where am I? | Current phase in `plans/workplans/<task_id>/task_plan.md` |
 | Where am I going? | Remaining phases |
 | What's the goal? | Goal statement in plan |
-| What have I learned? | `findings.<plan_id>.md` |
-| What have I done? | `progress.<plan_id>.md` |
+| What have I learned? | `plans/workplans/<task_id>/findings.md` |
+| What have I done? | `plans/workplans/<task_id>/progress.md` |
 
 ## When to Use This Pattern
 
@@ -255,7 +255,7 @@ Copy these templates to start:
 Helper scripts for automation:
 
 - `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . list` — Show current task table
-- `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan` — Create plan and bind task(s)
+- `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan --task-id <task_id>` — Create one task workplan
 - `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-resume` — Pick one PLANNED task to continue
 - `scripts/session-catchup.py` — Recover context from previous session (v2.2.0)
 
@@ -268,7 +268,7 @@ Helper scripts for automation:
 
 | Don't | Do Instead |
 |-------|------------|
-| Use TodoWrite for persistence | Use `plans/todo_current.md` + `plans/workplans/*.<plan_id>.md` |
+| Use TodoWrite for persistence | Use `plans/todo_current.md` + `plans/workplans/<task_id>/` |
 | State goals once and forget | Re-read active plan files before decisions |
 | Hide errors and retry silently | Log errors to plan file |
 | Stuff everything in context | Store large content in files |

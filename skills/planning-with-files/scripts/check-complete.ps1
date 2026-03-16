@@ -1,12 +1,23 @@
-# Check if all phases in task_plan.md are complete
+# Check if all phases in the active task_plan.md are complete
 # Always exits 0 — uses stdout for status reporting
 # Used by Stop hook to report task completion status
 
 param(
-    [string]$PlanFile = "task_plan.md"
+    [string]$PlanFile = ""
 )
 
-if (-not (Test-Path $PlanFile)) {
+if (-not $PlanFile) {
+    if (Test-Path "task_plan.md") {
+        $PlanFile = "task_plan.md"
+    } else {
+        $candidate = Get-ChildItem -Path "plans/workplans" -Filter "task_plan.md" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($candidate) {
+            $PlanFile = $candidate.FullName
+        }
+    }
+}
+
+if (-not $PlanFile -or -not (Test-Path $PlanFile)) {
     Write-Host "[planning-with-files] No task_plan.md found — no active planning session."
     exit 0
 }

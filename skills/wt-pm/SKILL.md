@@ -6,6 +6,10 @@ user-invocable: true
 
 # wt-pm: 全流程编排入口
 
+**REQUIRED SUB-SKILL CHAIN:**
+- Stage 1 规划阶段必须进入 `wt-plan`
+- `wt-plan` 在生成 task plan 时必须调用 `planning-with-files`
+
 WT-PM 工作流的导航层。只做引导，不做执行。
 
 ## Trigger Phrases
@@ -26,11 +30,35 @@ WT-PM 工作流的导航层。只做引导，不做执行。
 - 告知应该在哪个终端执行什么 skill
 - 在阶段转换时给出明确的下一步指令
 - 明确提示当前阶段应遵循的规则来源（`rules/*`）
+- 明确区分“方案级 plan”和“WT-PM 任务级 plan”的用途
+- 明确提示 `planning-with-files` 是 WT-PM 规划阶段的必经执行层
 
 **wt-pm 不做：**
 - 不执行任何 git 命令
 - 不读写任何文件
 - 不重复 wt-plan / wt-dev 的内容
+
+## Plan 分层规则
+
+WT-PM 内默认存在两层计划：
+
+1. 方案级 plan
+   - 通常位于仓库自己的 `docs/plans/` 或同类目录
+   - 用于冻结产品、设计、架构、数据模型等上层方向
+   - 可以覆盖一个或多个具体任务
+2. 任务级 plan
+   - 位于 WT-PM 自己的 `plans/workplans/<task_id>/`
+   - 与 `plans/todo_current.md` 中的 task 一一绑定
+   - 用于驱动 trunk 规划、worktree 实施、验证和 closure
+
+规则：
+
+- 方案级 plan 可以作为 WT-PM 任务规划的输入材料
+- 方案级 plan 不能替代 `plans/todo_current.md` 和 `plans/workplans/` 中的任务级 plan
+- 如果用户只想快速执行简单工作，且不想进入 WT-PM，可以直接按已批准的方案级 plan 开工
+- 一旦用户选择进入 WT-PM，执行层必须以任务级 plan 为准
+- 在 WT-PM 中，任务级 plan 的生成必须通过 `planning-with-files` 完成，而不是手工跳过该层
+- 若两层 plan 同时存在，任务级 plan 必须服从已批准的方案级 plan，除非用户显式修改设计
 
 ## 规范来源（被引用）
 
@@ -72,50 +100,75 @@ git branch --show-current
 
 在这个终端中，调用 wt-plan 完成以下步骤：
   1. 任务定义对话（目标、范围、验收标准）
-  2. 生成 plan 三文件
+  2. 结合已有方案级 plan，通过 planning-with-files 生成当前 task 的 workplan 三文件
   3. Commit plan 到 trunk
-  4. 创建任务 worktree + 同步配置
+  4. 生成 branch / worktree handoff 指引
 
 触发方式：直接说 "wt-plan" 或 "确认task" 即可开始。
+
+如果仓库中已经存在 `docs/plans/` 这类方案文档，先把它们视为上层约束；`wt-plan` 的职责是把这些约束翻译成当前 task 的执行计划，而不是跳过任务级 planning。
 ```
 
 等待用户确认 Stage 1 完成。确认信号：用户说"plan 好了"、"wt 创建好了"、"准备开发"等。
 
 ---
 
-## Stage 2: 开发阶段（Worktree 终端）
+## Stage 2: 进入 Task Worktree（切换环境）
 
-**前提：** wt-plan 已完成，worktree 已创建。
+**前提：** wt-plan 已完成。
 
 输出：
 
 ```
-🛠  Stage 2 — 开发阶段（需要切换终端）
+🧭 Stage 2 — 切换到 task worktree（需要切换环境）
 
-请打开一个新终端，进入任务 worktree 目录：
-  cd ../wt-<task_id>
+请不要在 trunk 目录里直接 checkout task 分支。
+你需要先进入该 task 的 worktree。创建或进入 worktree 的方式有两种：
+
+  A. Codex app handoff
+     - 在 trunk 线程里使用 handoff
+     - 输入新的 branch 名：`feat/<task_id>-<slug>`
+
+  B. 手动 git worktree
+     - 在 trunk 终端执行 `git worktree add ...`
+
+如果该 task 的 worktree 已存在，直接打开那个目录，不要重复 handoff，也不要在 trunk 目录里切 branch。
+进入 task worktree 后，再说 "开工" 触发 wt-dev。
+```
+
+---
+
+## Stage 3: 开发阶段（Task Worktree）
+
+**前提：** 已经位于 task worktree 目录。
+
+输出：
+
+```
+🛠  Stage 3 — 开发阶段（task worktree）
 
 然后说 "开工" 触发 wt-dev，wt-dev 将完成：
   1. 自动检测当前任务
   2. 加载 plan 上下文（三文件）
-  3. 环境初始化（首次）
+  3. 在当前 worktree 内完成环境初始化（首次）
   4. Sync trunk + regression gate
   5. 实现功能
   6. [PAUSE] 等待你的人工测试确认
-  7. Final regression gate
+  7. 重新同步 trunk 后再做 final regression gate
   8. 更新 plan 证据文件
   9. Merge 回 trunk
   10. 标记 DONE + 清理 worktree
 
 注意：
 - “实现完成” 只表示代码和验证在 task worktree 中已经完成。
+- 人工测试通过后，仍然必须先同步最新 trunk 并重跑最终回归，之后才允许 merge。
 - “任务完成” 只在 merge 回 trunk 且 `plans/todo_current.md` 已标记为 `DONE` 后成立。
 - 在 Phase 8 到 Phase 10 结束前，不要把 task 对用户表述为“已完成”。
 ```
 
 ---
 
-## Stage 3: 完成确认
+## Stage 4: 完成确认
 
 wt-dev 输出 `✅ wt-dev complete` 后，输出：
 
@@ -139,6 +192,7 @@ wt-dev 输出 `✅ wt-dev complete` 后，输出：
 询问：
 1. `git branch --show-current` 的输出是什么？
 2. `plans/todo_current.md` 里这个 task 的状态是什么（UNPLANNED / PLANNED / DONE）？
+3. 当前目录是否已经是该 task 的独立 worktree？
 
 根据回答导航到对应阶段。
 

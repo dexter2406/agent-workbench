@@ -1,16 +1,21 @@
-"""Track todo tasks and workplans for multi-agent planning-with-files workflow."""
+"""Track todo tasks and per-task workplans for the planning-with-files workflow."""
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
-import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 TODO_PATH = Path("plans/todo_current.md")
 WORKPLAN_DIR = Path("plans/workplans")
+
+STATUS_VALUES = ("UNPLANNED", "PLANNED", "DONE")
+SIMPLE_TABLE_COLUMNS = ("task_id", "task", "status", "updated_at", "note")
+LEGACY_SIMPLE_TABLE_COLUMNS = ("task_id", "task", "status", "plan_id", "updated_at", "note")
+RICH_TABLE_COLUMNS = ("task id", "slug", "title", "status", "dependencies", "parallel", "notes")
+LEGACY_RICH_TABLE_COLUMNS = ("task id", "slug", "title", "status", "plan id", "dependencies", "parallel", "notes")
 
 
 def set_root(root: Path) -> None:
@@ -18,8 +23,6 @@ def set_root(root: Path) -> None:
     global TODO_PATH, WORKPLAN_DIR
     TODO_PATH = root / "plans/todo_current.md"
     WORKPLAN_DIR = root / "plans/workplans"
-STATUS_VALUES = ("UNPLANNED", "PLANNED", "DONE")
-TABLE_COLUMNS = ("task_id", "task", "status", "plan_id", "updated_at", "note")
 
 
 @dataclass
@@ -29,20 +32,40 @@ class TodoTask:
     task_id: str
     task: str
     status: str
-    plan_id: str
     updated_at: str
     note: str
+    extras: dict[str, str] = field(default_factory=dict)
 
-    def to_cells(self) -> list[str]:
-        """Return row cells in canonical table column order."""
-        return [
-            self.task_id,
-            self.task,
-            self.status,
-            self.plan_id,
-            self.updated_at,
-            self.note,
-        ]
+    def to_cells(self, table_kind: str) -> list[str]:
+        """Return row cells in the canonical table schema."""
+        if table_kind == "simple":
+            return [
+                self.task_id,
+                self.task,
+                self.status,
+                self.updated_at,
+                self.note,
+            ]
+        if table_kind == "rich":
+            return [
+                self.task_id,
+                self.extras.get("slug", ""),
+                self.task,
+                self.status,
+                self.extras.get("dependencies", ""),
+                self.extras.get("parallel", ""),
+                self.note,
+            ]
+        raise ValueError(f"Unsupported table kind '{table_kind}'.")
+
+
+@dataclass
+class ParsedTodo:
+    """Parsed todo_current.md with schema metadata."""
+
+    preamble: list[str]
+    tasks: list[TodoTask]
+    table_kind: str
 
 
 def now_iso() -> str:
@@ -74,66 +97,100 @@ def normalize_status(value: str) -> str:
     return status
 
 
-def parse_todo_file(path: Path) -> tuple[list[str], list[TodoTask]]:
+def parse_todo_file(path: Path) -> ParsedTodo:
     """Parse markdown task table from todo_current.md."""
     if not path.exists():
         raise FileNotFoundError(f"Missing todo file: {path}")
 
     lines = path.read_text(encoding="utf-8").splitlines()
     header_idx = None
+    schema = None
     for idx, line in enumerate(lines):
-        cells = split_row(line)
-        if [c.lower() for c in cells] == list(TABLE_COLUMNS):
+        lowered = [cell.lower() for cell in split_row(line)]
+        if lowered == list(SIMPLE_TABLE_COLUMNS):
             header_idx = idx
+            schema = "simple"
             break
-    if header_idx is None:
-        raise ValueError("todo_current.md is not in table format. Please migrate it first.")
+        if lowered == list(LEGACY_SIMPLE_TABLE_COLUMNS):
+            header_idx = idx
+            schema = "legacy_simple"
+            break
+        if lowered == list(RICH_TABLE_COLUMNS):
+            header_idx = idx
+            schema = "rich"
+            break
+        if lowered == list(LEGACY_RICH_TABLE_COLUMNS):
+            header_idx = idx
+            schema = "legacy_rich"
+            break
+    if header_idx is None or schema is None:
+        raise ValueError("todo_current.md is not in a supported table format.")
 
+    table_kind = "rich" if "rich" in schema else "simple"
     preamble = lines[:header_idx]
     tasks: list[TodoTask] = []
     for line in lines[header_idx + 1 :]:
         if not line.strip():
             continue
         cells = split_row(line)
-        if not cells:
+        if not cells or is_separator_row(cells):
             continue
-        if is_separator_row(cells):
+        if schema in ("simple", "legacy_simple"):
+            columns = SIMPLE_TABLE_COLUMNS if schema == "simple" else LEGACY_SIMPLE_TABLE_COLUMNS
+            if len(cells) < len(columns):
+                cells += [""] * (len(columns) - len(cells))
+            row = dict(zip(columns, cells[: len(columns)]))
+            tasks.append(
+                TodoTask(
+                    task_id=row["task_id"],
+                    task=row["task"],
+                    status=normalize_status(row["status"]),
+                    updated_at=row["updated_at"],
+                    note=row["note"],
+                )
+            )
             continue
-        if len(cells) < len(TABLE_COLUMNS):
-            cells += [""] * (len(TABLE_COLUMNS) - len(cells))
-        row = dict(zip(TABLE_COLUMNS, cells[: len(TABLE_COLUMNS)]))
+
+        columns = RICH_TABLE_COLUMNS if schema == "rich" else LEGACY_RICH_TABLE_COLUMNS
+        if len(cells) < len(columns):
+            cells += [""] * (len(columns) - len(cells))
+        row = dict(zip(columns, cells[: len(columns)]))
         tasks.append(
             TodoTask(
-                task_id=row["task_id"],
-                task=row["task"],
+                task_id=row["task id"],
+                task=row["title"],
                 status=normalize_status(row["status"]),
-                plan_id=row["plan_id"],
-                updated_at=row["updated_at"],
-                note=row["note"],
+                updated_at="",
+                note=row["notes"],
+                extras={
+                    "slug": row["slug"],
+                    "dependencies": row["dependencies"],
+                    "parallel": row["parallel"],
+                },
             )
         )
 
-    return preamble, tasks
+    return ParsedTodo(preamble=preamble, tasks=tasks, table_kind=table_kind)
 
 
-def render_table(tasks: list[TodoTask]) -> list[str]:
-    """Render task rows into canonical markdown table lines."""
-    header = "| " + " | ".join(TABLE_COLUMNS) + " |"
-    separator = "| " + " | ".join("---" for _ in TABLE_COLUMNS) + " |"
+def render_table(tasks: list[TodoTask], table_kind: str) -> list[str]:
+    """Render task rows into the canonical markdown table schema."""
+    columns = SIMPLE_TABLE_COLUMNS if table_kind == "simple" else RICH_TABLE_COLUMNS
+    header = "| " + " | ".join(columns) + " |"
+    separator = "| " + " | ".join("---" for _ in columns) + " |"
     lines = [header, separator]
     for task in tasks:
-        cells = task.to_cells()
-        lines.append("| " + " | ".join(cells) + " |")
+        lines.append("| " + " | ".join(task.to_cells(table_kind)) + " |")
     return lines
 
 
-def save_todo(path: Path, preamble: list[str], tasks: list[TodoTask]) -> None:
+def save_todo(path: Path, parsed: ParsedTodo) -> None:
     """Persist todo markdown with preamble + canonical table."""
     output = []
-    output.extend(preamble)
+    output.extend(parsed.preamble)
     if output and output[-1].strip() != "":
         output.append("")
-    output.extend(render_table(tasks))
+    output.extend(render_table(parsed.tasks, parsed.table_kind))
     output.append("")
     path.write_text("\n".join(output), encoding="utf-8")
 
@@ -146,99 +203,41 @@ def find_task(tasks: Iterable[TodoTask], task_id: str) -> TodoTask:
     raise ValueError(f"Task '{task_id}' was not found.")
 
 
-def parse_task_ids(value: str | None) -> list[str]:
-    """Parse comma-separated task id input."""
-    if not value:
-        return []
-    return [part.strip() for part in value.split(",") if part.strip()]
+def task_dir(task_id: str) -> Path:
+    """Return the canonical workplan directory for a task."""
+    return WORKPLAN_DIR / task_id
 
 
-def validate_plan_id(plan_id: str) -> None:
-    """Validate project plan_id format: YYYYMMDD-<task_id>[-NN]."""
-    value = plan_id.strip()
-    if not value:
-        raise ValueError("Invalid plan_id format: empty value.")
-
-    parts = value.split("-")
-    if len(parts) < 3:
-        raise ValueError(
-            "Invalid plan_id format. Expected YYYYMMDD-<task_id>[-NN], e.g. 20260218-TC-008."
-        )
-
-    date_part = parts[0]
-    if not re.fullmatch(r"\d{8}", date_part):
-        raise ValueError(
-            "Invalid plan_id format. Expected YYYYMMDD-<task_id>[-NN], e.g. 20260218-TC-008."
-        )
-    try:
-        dt.datetime.strptime(date_part, "%Y%m%d")
-    except ValueError as exc:
-        raise ValueError(
-            f"Invalid plan_id format: date '{date_part}' is not a valid calendar date."
-        ) from exc
-
-    suffix = ""
-    task_segments = parts[1:]
-    if len(task_segments) >= 3 and re.fullmatch(r"\d{2}", task_segments[-1]):
-        suffix = task_segments[-1]
-        task_segments = task_segments[:-1]
-
-    task_id_part = "-".join(task_segments)
-    if not re.fullmatch(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+", task_id_part):
-        raise ValueError(
-            "Invalid plan_id format. Expected YYYYMMDD-<task_id>[-NN], e.g. 20260218-TC-008."
-        )
-
-    if suffix and suffix == "00":
-        raise ValueError("Invalid plan_id format: optional suffix must be 01-99.")
+def task_file_paths(task_id: str) -> tuple[Path, Path, Path]:
+    """Return canonical workplan file paths for a task."""
+    base = task_dir(task_id)
+    return base / "task_plan.md", base / "findings.md", base / "progress.md"
 
 
-def build_plan_id(existing: set[str], task_id: str, today: dt.date | None = None) -> str:
-    """Generate a unique plan_id in YYYYMMDD-task_id[-NN] format."""
-    normalized_task_id = task_id.strip()
-    if not normalized_task_id:
-        raise ValueError("Cannot build plan_id: task_id is empty.")
-    if not re.fullmatch(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+", normalized_task_id):
-        raise ValueError(
-            f"Cannot build plan_id: task_id '{task_id}' must contain alphanumeric segments joined by hyphens."
-        )
-
-    day = today or dt.date.today()
-    base = f"{day.strftime('%Y%m%d')}-{normalized_task_id}"
-    candidate = base
-    suffix = 0
-    while candidate in existing:
-        suffix += 1
-        candidate = f"{base}-{suffix:02d}"
-    return candidate
-
-
-def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str]) -> None:
-    """Create task_plan/findings/progress markdown files for a new plan."""
-    WORKPLAN_DIR.mkdir(parents=True, exist_ok=True)
-    task_list = "\n".join(f"- {task.task_id}: {task.task}" for task in tasks)
+def create_plan_files(task: TodoTask, rationale: list[str]) -> None:
+    """Create task_plan/findings/progress markdown files for one task."""
+    workplan_path = task_dir(task.task_id)
+    workplan_path.mkdir(parents=True, exist_ok=True)
+    task_plan_path, findings_path, progress_path = task_file_paths(task.task_id)
     now = now_iso()
-    task_plan_path = WORKPLAN_DIR / f"task_plan.{plan_id}.md"
-    findings_path = WORKPLAN_DIR / f"findings.{plan_id}.md"
-    progress_path = WORKPLAN_DIR / f"progress.{plan_id}.md"
 
     task_plan_path.write_text(
         "\n".join(
             [
-                f"# Task Plan: {plan_id}",
+                f"# Task Plan: {task.task_id}",
                 "",
                 "## Goal",
-                "Implement selected todo_current tasks and keep progress persistent on disk.",
+                task.task,
                 "",
                 "## Scope",
-                task_list,
+                f"- {task.task_id}: {task.task}",
                 "",
                 "## Current Phase",
                 "Phase 1",
                 "",
                 "## Phases",
                 "### Phase 1: Requirements & Discovery",
-                "- [x] Confirm selected tasks and constraints",
+                "- [x] Confirm selected task and constraints",
                 "- [ ] Write findings and rationale",
                 "- **Status:** in_progress",
                 "",
@@ -248,7 +247,7 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
                 "- **Status:** pending",
                 "",
                 "### Phase 3: Implementation",
-                "- [ ] Execute selected tasks",
+                "- [ ] Execute the task",
                 "- [ ] Keep progress and errors updated",
                 "- **Status:** pending",
                 "",
@@ -268,10 +267,10 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
     )
 
     findings_lines = [
-        f"# Findings & Decisions ({plan_id})",
+        f"# Findings & Decisions ({task.task_id})",
         "",
         "## Requirements",
-        task_list,
+        f"- {task.task_id}: {task.task}",
         "",
         "## Research Findings",
         "-",
@@ -292,7 +291,7 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
             "",
             "## Resources",
             "- plans/todo_current.md",
-            f"- plans/workplans/task_plan.{plan_id}.md",
+            f"- plans/workplans/{task.task_id}/task_plan.md",
             "",
         ]
     )
@@ -301,7 +300,7 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
     progress_path.write_text(
         "\n".join(
             [
-                f"# Progress Log ({plan_id})",
+                f"# Progress Log ({task.task_id})",
                 "",
                 f"## Session: {dt.date.today().isoformat()}",
                 "",
@@ -309,12 +308,12 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
                 "- **Status:** in_progress",
                 f"- **Started:** {now}",
                 "- Actions taken:",
-                f"  - Created plan {plan_id}",
-                "  - Bound selected tasks from todo_current",
+                f"  - Created workplan for task {task.task_id}",
+                "  - Marked task as PLANNED in todo_current",
                 "- Files created/modified:",
-                f"  - plans/workplans/task_plan.{plan_id}.md (created)",
-                f"  - plans/workplans/findings.{plan_id}.md (created)",
-                f"  - plans/workplans/progress.{plan_id}.md (created)",
+                f"  - plans/workplans/{task.task_id}/task_plan.md (created)",
+                f"  - plans/workplans/{task.task_id}/findings.md (created)",
+                f"  - plans/workplans/{task.task_id}/progress.md (created)",
                 "",
                 "## Test Results",
                 "| Test | Input | Expected | Actual | Status |",
@@ -332,186 +331,130 @@ def create_plan_files(plan_id: str, tasks: list[TodoTask], rationale: list[str])
     )
 
 
-def choose_auto_tasks(tasks: list[TodoTask], max_tasks: int) -> tuple[list[TodoTask], list[str]]:
-    """Select next tasks automatically with deterministic and explainable heuristics."""
+def choose_auto_task(tasks: list[TodoTask]) -> tuple[TodoTask | None, list[str]]:
+    """Select the next task automatically with deterministic heuristics."""
     unfinished = [task for task in tasks if task.status in ("UNPLANNED", "PLANNED")]
     unplanned = [task for task in unfinished if task.status == "UNPLANNED"]
     planned = [task for task in unfinished if task.status == "PLANNED"]
-    selected = unplanned[:max_tasks]
+    selected = unplanned[0] if unplanned else None
     rationale = [
         f"Candidate pool evaluated from unfinished tasks: {len(unfinished)} (UNPLANNED={len(unplanned)}, PLANNED={len(planned)}).",
-        "Selected UNPLANNED tasks first to avoid plan ownership conflicts and maximize parallel throughput.",
-        f"Chosen by todo order for predictability; selection count={len(selected)}.",
+        "Selected the first UNPLANNED task by todo order for predictability and single-task ownership.",
     ]
     return selected, rationale
 
 
 def cmd_list(args: argparse.Namespace) -> int:
     """Print tasks with optional status filtering."""
-    _, tasks = parse_todo_file(TODO_PATH)
-    selected = tasks
+    parsed = parse_todo_file(TODO_PATH)
+    selected = parsed.tasks
     if args.status:
         status = normalize_status(args.status)
-        selected = [task for task in tasks if task.status == status]
-    print("| " + " | ".join(TABLE_COLUMNS) + " |")
-    print("| " + " | ".join("---" for _ in TABLE_COLUMNS) + " |")
+        selected = [task for task in parsed.tasks if task.status == status]
+    columns = SIMPLE_TABLE_COLUMNS if parsed.table_kind == "simple" else RICH_TABLE_COLUMNS
+    print("| " + " | ".join(columns) + " |")
+    print("| " + " | ".join("---" for _ in columns) + " |")
     for task in selected:
-        print("| " + " | ".join(task.to_cells()) + " |")
+        print("| " + " | ".join(task.to_cells(parsed.table_kind)) + " |")
     return 0
 
 
 def cmd_quick_plan(args: argparse.Namespace) -> int:
-    """Create one plan for selected tasks and mark them as PLANNED."""
-    preamble, tasks = parse_todo_file(TODO_PATH)
-    provided_ids = parse_task_ids(args.task_ids)
+    """Create one workplan for one task and mark it PLANNED."""
+    parsed = parse_todo_file(TODO_PATH)
+    tasks = parsed.tasks
 
-    if provided_ids:
-        selected = [find_task(tasks, task_id) for task_id in provided_ids]
+    selected: TodoTask | None
+    if args.task_id:
+        selected = find_task(tasks, args.task_id)
         rationale = [
             "Task scope explicitly provided by user.",
-            f"Selected tasks: {', '.join(task.task_id for task in selected)}.",
+            f"Selected task: {selected.task_id}.",
+        ]
+    elif args.task_ids:
+        provided = [part.strip() for part in args.task_ids.split(",") if part.strip()]
+        if len(provided) != 1:
+            raise ValueError("quick-plan supports exactly one task. Use --task-id with a single task.")
+        selected = find_task(tasks, provided[0])
+        rationale = [
+            "Task scope explicitly provided by legacy --task-ids input.",
+            f"Selected task: {selected.task_id}.",
         ]
     else:
-        selected, rationale = choose_auto_tasks(tasks, max_tasks=args.max_tasks)
+        selected, rationale = choose_auto_task(tasks)
 
-    if not selected:
-        raise ValueError("No selectable tasks found. Use quick-resume for existing PLANNED tasks.")
+    if selected is None:
+        raise ValueError("No selectable UNPLANNED tasks found. Use quick-resume for existing PLANNED tasks.")
+    if selected.status == "DONE":
+        raise ValueError(f"Task {selected.task_id} is DONE and cannot be planned again.")
+    if selected.status == "PLANNED":
+        raise ValueError(f"Task {selected.task_id} is already PLANNED. Use quick-resume.")
 
-    for task in selected:
-        if task.status == "DONE":
-            raise ValueError(f"Task {task.task_id} is DONE and cannot be planned again.")
-        if task.status == "PLANNED" and task.plan_id:
-            raise ValueError(
-                f"Task {task.task_id} is already PLANNED by plan '{task.plan_id}'. Use quick-resume."
-            )
+    create_plan_files(task=selected, rationale=rationale)
 
-    existing_plan_ids = {task.plan_id for task in tasks if task.plan_id}
-    if args.plan_id:
-        validate_plan_id(args.plan_id)
-        plan_id = args.plan_id
-    else:
-        plan_id = build_plan_id(existing_plan_ids, task_id=selected[0].task_id)
+    selected.status = "PLANNED"
+    selected.updated_at = now_iso()
+    if args.note:
+        selected.note = args.note
+    elif not args.task_id and not args.task_ids:
+        selected.note = "auto-selected by agent heuristic"
 
-    create_plan_files(plan_id=plan_id, tasks=selected, rationale=rationale)
-
-    timestamp = now_iso()
-    for task in selected:
-        task.status = "PLANNED"
-        task.plan_id = plan_id
-        task.updated_at = timestamp
-        if args.note:
-            task.note = args.note
-        elif not provided_ids:
-            task.note = "auto-selected by agent heuristic"
-
-    save_todo(TODO_PATH, preamble, tasks)
-    print(f"Created plan: {plan_id}")
-    print("Tasks:")
-    for task in selected:
-        print(f"- {task.task_id}: {task.task}")
-    print(f"Files: {WORKPLAN_DIR}/task_plan.{plan_id}.md, findings.{plan_id}.md, progress.{plan_id}.md")
+    save_todo(TODO_PATH, parsed)
+    print(f"Created workplan for task: {selected.task_id}")
+    print(f"Task: {selected.task}")
+    print("Files:")
+    for path in task_file_paths(selected.task_id):
+        print(f"- {path}")
     return 0
 
 
 def cmd_quick_resume(args: argparse.Namespace) -> int:
-    """Resolve one PLANNED task/plan to continue and print related files."""
-    _, tasks = parse_todo_file(TODO_PATH)
-    planned = [task for task in tasks if task.status == "PLANNED"]
+    """Resolve one PLANNED task to continue and print related files."""
+    parsed = parse_todo_file(TODO_PATH)
+    planned = [task for task in parsed.tasks if task.status == "PLANNED"]
     if not planned:
         raise ValueError("No PLANNED tasks found.")
 
-    selected: TodoTask | None = None
-    if args.plan_id:
-        for task in planned:
-            if task.plan_id == args.plan_id:
-                selected = task
-                break
-        if selected is None:
-            raise ValueError(f"No PLANNED tasks found for plan '{args.plan_id}'.")
-    elif args.task_id:
-        selected = find_task(planned, args.task_id)
-    else:
-        selected = planned[0]
+    selected = find_task(planned, args.task_id) if args.task_id else planned[0]
 
-    assert selected is not None
-    if not selected.plan_id:
-        raise ValueError(f"Task {selected.task_id} is PLANNED but missing plan_id.")
-
-    plan_id = selected.plan_id
     print(f"Resume task: {selected.task_id} ({selected.task})")
-    print(f"Plan: {plan_id}")
-    print(f"- {WORKPLAN_DIR / f'task_plan.{plan_id}.md'}")
-    print(f"- {WORKPLAN_DIR / f'findings.{plan_id}.md'}")
-    print(f"- {WORKPLAN_DIR / f'progress.{plan_id}.md'}")
+    for path in task_file_paths(selected.task_id):
+        print(f"- {path}")
     return 0
 
 
 def cmd_set_status(args: argparse.Namespace) -> int:
     """Set task status with lifecycle guards and metadata updates."""
-    preamble, tasks = parse_todo_file(TODO_PATH)
-    task = find_task(tasks, args.task_id)
+    parsed = parse_todo_file(TODO_PATH)
+    task = find_task(parsed.tasks, args.task_id)
     new_status = normalize_status(args.status)
-
-    if new_status in ("PLANNED", "DONE"):
-        plan_id = args.plan_id or task.plan_id
-        if not plan_id:
-            raise ValueError(f"Task {task.task_id}: status {new_status} requires a plan_id.")
-        if args.plan_id:
-            validate_plan_id(plan_id)
-        task.plan_id = plan_id
-    elif new_status == "UNPLANNED":
-        task.plan_id = ""
 
     task.status = new_status
     if args.note is not None:
         task.note = args.note
     task.updated_at = now_iso()
 
-    save_todo(TODO_PATH, preamble, tasks)
-    print(f"Updated {task.task_id} -> {task.status} (plan_id={task.plan_id or 'N/A'})")
-    return 0
-
-
-def cmd_bind_task(args: argparse.Namespace) -> int:
-    """Bind a task to an active plan and mark it PLANNED."""
-    preamble, tasks = parse_todo_file(TODO_PATH)
-    task = find_task(tasks, args.task_id)
-    validate_plan_id(args.plan_id)
-
-    if task.status == "DONE":
-        raise ValueError(f"Task {task.task_id} is DONE and cannot be rebound.")
-    if task.status == "PLANNED" and task.plan_id and task.plan_id != args.plan_id:
-        raise ValueError(
-            f"Task {task.task_id} is already PLANNED by plan '{task.plan_id}', cannot bind to '{args.plan_id}'."
-        )
-
-    task.status = "PLANNED"
-    task.plan_id = args.plan_id
-    task.updated_at = now_iso()
-    if args.note is not None:
-        task.note = args.note
-
-    save_todo(TODO_PATH, preamble, tasks)
-    print(f"Bound {task.task_id} to plan {args.plan_id}")
+    save_todo(TODO_PATH, parsed)
+    print(f"Updated {task.task_id} -> {task.status}")
     return 0
 
 
 def cmd_view_active(_: argparse.Namespace) -> int:
     """Print the first active PLANNED task in one line for quick context hooks."""
-    _, tasks = parse_todo_file(TODO_PATH)
-    planned = [task for task in tasks if task.status == "PLANNED"]
+    parsed = parse_todo_file(TODO_PATH)
+    planned = [task for task in parsed.tasks if task.status == "PLANNED"]
     if not planned:
         print("[plan-tracker] no active PLANNED task")
         return 0
     task = planned[0]
-    print(f"[plan-tracker] active={task.task_id} plan={task.plan_id}")
+    print(f"[plan-tracker] active={task.task_id}")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Create CLI parser for plan/task tracking operations."""
+    """Create CLI parser for task tracking operations."""
     parser = argparse.ArgumentParser(
-        description="Track todo task lifecycle and multi-plan files under plans/workplans."
+        description="Track todo task lifecycle and per-task workplans under plans/workplans."
     )
     parser.add_argument(
         "--root",
@@ -524,30 +467,21 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--status", help="Filter by status (UNPLANNED|PLANNED|DONE)")
     list_parser.set_defaults(func=cmd_list)
 
-    plan_parser = subparsers.add_parser("quick-plan", help="Create one plan and bind task(s)")
-    plan_parser.add_argument("--task-ids", help="Comma-separated task ids. Omit for auto-select.")
-    plan_parser.add_argument("--max-tasks", type=int, default=1, help="Auto-select count when task ids omitted.")
-    plan_parser.add_argument("--plan-id", help="Optional explicit plan id (YYYYMMDD-<task_id>[-NN]).")
-    plan_parser.add_argument("--note", help="Optional note written to selected tasks.")
+    plan_parser = subparsers.add_parser("quick-plan", help="Create one workplan and bind one task")
+    plan_parser.add_argument("--task-id", help="Single task id to plan.")
+    plan_parser.add_argument("--task-ids", help="Legacy comma-separated task ids. Must resolve to one task.")
+    plan_parser.add_argument("--note", help="Optional note written to the selected task.")
     plan_parser.set_defaults(func=cmd_quick_plan)
 
     resume_parser = subparsers.add_parser("quick-resume", help="Pick one PLANNED task for continuation")
     resume_parser.add_argument("--task-id", help="Specific PLANNED task id")
-    resume_parser.add_argument("--plan-id", help="Specific plan id")
     resume_parser.set_defaults(func=cmd_quick_resume)
 
     status_parser = subparsers.add_parser("set-status", help="Set one task status")
     status_parser.add_argument("--task-id", required=True)
     status_parser.add_argument("--status", required=True, help="UNPLANNED|PLANNED|DONE")
-    status_parser.add_argument("--plan-id", help="Required for PLANNED or DONE if task has no plan_id; format YYYYMMDD-<task_id>[-NN]")
     status_parser.add_argument("--note", help="Optional note overwrite")
     status_parser.set_defaults(func=cmd_set_status)
-
-    bind_parser = subparsers.add_parser("bind-task", help="Bind one task to an active plan")
-    bind_parser.add_argument("--task-id", required=True)
-    bind_parser.add_argument("--plan-id", required=True, help="Plan id in YYYYMMDD-<task_id>[-NN] format")
-    bind_parser.add_argument("--note", help="Optional note overwrite")
-    bind_parser.set_defaults(func=cmd_bind_task)
 
     view_parser = subparsers.add_parser("view-active", help="Show first PLANNED task for hooks")
     view_parser.set_defaults(func=cmd_view_active)

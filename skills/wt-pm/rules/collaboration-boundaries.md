@@ -30,6 +30,11 @@ Primary entrypoint: `skills/wt-pm/SKILL.md` and `skills/wt-pm/references/wt-pm-w
 
 规划与状态机规则参见：`rules/planning-with-files.md`。
 
+角色边界补充：
+- trunk 负责 planning、状态更新、以及进入 task worktree 之前的上下文准备。
+- task worktree 负责环境初始化、实现、验证、merge 收尾。
+- 不要在 trunk 目录中 checkout 一个已经被其他 worktree 占用的 task 分支。
+
 ## Commit Conventions
 
 - 分支命名：`feat/<task_id>-<slug>`
@@ -44,7 +49,9 @@ Primary entrypoint: `skills/wt-pm/SKILL.md` and `skills/wt-pm/references/wt-pm-w
 - API contract 冻结期禁止 breaking change（具体版本策略见项目 contract 规则）。
 - `.env` 不入库；示例配置使用 `.env.example`。
 - Merge/状态迁移前必须通过项目定义的 regression gate。
+- 人工测试通过后仍必须重新同步最新 trunk，并在该集成状态上完成最终回归后才能 merge。
 - 任何可交接节点需有可追溯记录（`progress/findings/todo_current`）。
+- ignored local files、依赖安装、私有配置等 task-local 环境准备应在目标 worktree 内完成，而不是 trunk。
 
 ## Scope Awareness
 

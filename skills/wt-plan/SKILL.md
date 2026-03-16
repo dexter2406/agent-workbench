@@ -1,10 +1,12 @@
 ---
 name: wt-plan
-description: Trunk-phase skill for WT-PM workflow. Handles task definition dialogue, plan file creation, plan commit to trunk, worktree creation, and config sync. Run this on the trunk (dev) branch before switching to the task worktree.
+description: Trunk-phase skill for WT-PM workflow. Handles task definition dialogue, plan file creation, plan commit to trunk, and prepares the branch/worktree handoff. Use this on the trunk branch before entering the task worktree. Do not use it for task-local environment setup.
 user-invocable: true
 ---
 
-# wt-plan: Task Planning & Worktree Setup (Trunk Phase)
+# wt-plan: Task Planning & Worktree Handoff (Trunk Phase)
+
+**REQUIRED SUB-SKILL:** Use `planning-with-files` when creating or updating WT-PM task plans.
 
 Trunk-side skill for the WT-PM lifecycle. Run this from the **trunk (`dev`) branch terminal**.
 
@@ -14,9 +16,22 @@ Covers:
 3. Update `plans/todo_current.md`
 4. Create plan three-files (via `quick-plan`)
 5. Commit plan artifacts to trunk
-6. Create task worktree + sync shared config
+6. Prepare the task branch / worktree handoff
 
 For the implementation phase (worktree terminal), use `wt-dev`.
+
+## Plan Layering Rule
+
+`wt-plan` 负责的是 WT-PM 的任务级 planning，不是替代仓库自己的方案级 design/implementation plan。
+任务级 planning 的执行层必须使用 `planning-with-files`，不能手工绕过。
+
+在进入 Phase 1 之前，先应用这条规则：
+
+- 如果仓库已有 `docs/plans/` 或同类目录下的方案级 plan，先把它们作为上层输入
+- `wt-plan` 通过 `planning-with-files` 生成当前 task 的 task-specific plan，落在 `plans/workplans/`
+- 方案级 plan 可以指导多个 task
+- task-specific plan 不得擅自偏离已批准的方案级 plan，除非用户明确要求改设计
+- 如果工作很小，且用户明确不想进入 WT-PM，可不使用 `wt-plan`
 
 ## Trigger Phrases
 
@@ -35,15 +50,10 @@ Parse from user request, or derive interactively:
 - `task_id` (required): e.g. `TC-107`
 - `slug` (required): e.g. `receiver-mapping-ui`
 - `trunk` (optional, default: `dev`)
-- `worktree_path` (optional, default: `../wt-<task_id>`)
-- `apply_sync` (optional, default: `true`)
+- `worktree_path` (optional): existing path or recommended path for manual `git worktree add`
 
 Derived:
 - `feature_branch = feat/<task_id>-<slug>`
-- `plan_id`: from `quick-plan` output (format: `YYYYMMDD-HHmm`)
-
----
-
 ## Phase 0: Pre-Check（对话前置检查）
 
 **在进入任务定义对话之前，先执行状态检查。**
@@ -74,7 +84,7 @@ python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . list
 |------|------|
 | 不存在 | 正常进入 Phase 1（任务定义对话） |
 | `UNPLANNED` | 告知任务已存在但未规划，确认是否继续规划 |
-| `PLANNED` | 询问用户：**续做已有 plan** 还是**重新规划**？<br>- 续做 → 切换到该 worktree 终端，使用 `wt-dev`<br>- 重新规划 → 确认后继续，原 plan 作废 |
+| `PLANNED` | 询问用户：**续做已有 task workplan** 还是**重新规划**？<br>- 续做 → 切换到该 worktree 终端，使用 `wt-dev`<br>- 重新规划 → 确认后继续，原 workplan 作废 |
 | `DONE` | **停止**。告知任务已完成，不需要重新规划。|
 
 如果用户未提供 task_id，跳过 0b，直接进入 Phase 1。
@@ -96,6 +106,7 @@ Goal: reach shared understanding on task scope before writing anything to disk.
 3. Acceptance criteria: 如何判断完成？
 4. Dependencies: 阻塞了哪些任务，或被哪些任务阻塞？
 5. `task_id` 和 `slug`: 确认或提议。
+6. Relevant higher-level plan: 是否已有方案级 plan 约束当前任务？如果有，先记录其路径和影响范围。
 
 全部确认后宣告："Task definition confirmed. Proceeding to plan creation."
 
@@ -123,22 +134,29 @@ Rules:
 
 Goal: generate structured plan artifacts and bind them to the task.
 
+Before creating or updating these files, invoke `planning-with-files` and follow its file-based planning rules. Do not hand-write substitute planning files unless the skill is unavailable.
+
 ```bash
-python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan --task-ids <task_id>
+python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan --task-id <task_id>
 ```
 
 This command:
-- Creates `plans/workplans/task_plan.<plan_id>.md`
-- Creates `plans/workplans/findings.<plan_id>.md`
-- Creates `plans/workplans/progress.<plan_id>.md`
-- Updates `plans/todo_current.md` status to `PLANNED` with `plan_id`
+- Creates `plans/workplans/<task_id>/task_plan.md`
+- Creates `plans/workplans/<task_id>/findings.md`
+- Creates `plans/workplans/<task_id>/progress.md`
+- Updates `plans/todo_current.md` status to `PLANNED`
+
+After `quick-plan`, continue following `planning-with-files` expectations:
+- fill each file with enough structure to support session recovery
+- keep findings and progress updated as work advances
+- treat `plans/workplans/` as the execution memory for the task
 
 After running, verify three files exist under `plans/workplans/` and `todo_current.md` shows `PLANNED`.
 
 Fill in the plan files with content from the Phase 1 dialogue:
-- `task_plan.<plan_id>.md`: goal, acceptance criteria, implementation phases
-- `findings.<plan_id>.md`: scope decision rationale, known dependencies, risks
-- `progress.<plan_id>.md`: initial entry noting plan created, start timestamp
+- `plans/workplans/<task_id>/task_plan.md`: goal, acceptance criteria, implementation phases
+- `plans/workplans/<task_id>/findings.md`: scope decision rationale, known dependencies, risks, and any referenced higher-level plans
+- `plans/workplans/<task_id>/progress.md`: initial entry noting plan created, start timestamp
 
 **Stop condition:** If any file is missing after `quick-plan`, stop and report.
 
@@ -157,9 +175,9 @@ Commands:
 
 ```bash
 git add plans/todo_current.md \
-        plans/workplans/task_plan.<plan_id>.md \
-        plans/workplans/findings.<plan_id>.md \
-        plans/workplans/progress.<plan_id>.md
+        plans/workplans/<task_id>/task_plan.md \
+        plans/workplans/<task_id>/findings.md \
+        plans/workplans/<task_id>/progress.md
 git commit -m "<task_id>: add planning docs for <slug>"
 ```
 
@@ -170,66 +188,23 @@ Rules:
 
 ---
 
-## Phase 5: Create Task Worktree + Sync Config
+## Phase 5: Prepare Branch / Worktree Handoff
 
-Goal: create an isolated task branch/worktree and sync shared config files.
+Goal: finish trunk-side planning and hand off into a task worktree without doing task-local setup on trunk.
 
-### 5a. Check if worktree already exists
-
-```bash
-git worktree list
-```
-
-- 如果 `../wt-<task_id>` 已存在：跳过 `git worktree add`，直接进行 sync。
-- 如果不存在：执行 `git worktree add`。
-
-### 5b. Create worktree（if new）
-
-```bash
-git worktree add -b feat/<task_id>-<slug> ../wt-<task_id> <trunk>
-```
+Required outputs:
+- Feature branch name: `feat/<task_id>-<slug>`
+- Existing or recommended worktree path
+- Clear instruction that environment initialization must happen inside the task worktree via `wt-dev`
 
 Rules:
-- 默认路径：`../wt-<task_id>`（同级目录，可见）。
-- 不要创建在隐藏目录（如 `.worktrees/`）下。
-- 如果因权限/sandbox 限制失败，停止并报告。
-- 不改变 `feat/<task_id>-<slug>` 命名约定。
-
-### 5c. Sync shared config（dry-run then apply）
-
-从 trunk worktree 根目录执行（同步方向：当前目录 → 任务 worktree）：
-
-```bash
-bash ~/.claude/skills/wt-pm/scripts/sync_worktree_config.sh
-bash ~/.claude/skills/wt-pm/scripts/sync_worktree_config.sh --apply
-```
-
-Windows fallback（`bash` 不可用时）：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ~/.claude/skills/wt-pm/scripts/sync_worktree_config.ps1
-powershell -ExecutionPolicy Bypass -File ~/.claude/skills/wt-pm/scripts/sync_worktree_config.ps1 -Apply
-```
-
-Rules:
-- Dry-run 是强制的，不可跳过。
-- 如果 `.sh` 和 `.ps1` 都失败，立即停止。
-- 如果 `apply_sync=false`，跳过 apply 并明确报告。
-
-### 5d. Post-check（mandatory）
-
-验证以下内容在任务 worktree（`../wt-<task_id>`）中存在：
-- `.agents/` 目录（报告文件数量）
-- `.env` 文件（验证内容 hash 与 trunk 一致）
-- `frontend/.env.local` 文件（验证内容 hash 与 trunk 一致）
-
-**Output summary（required）：**
-- Created branch: `feat/<task_id>-<slug>`
-- Created worktree path: `../wt-<task_id>`
-- Sync method: `bash` or `powershell`
-- Sync dry-run result
-- Sync apply result（or `skipped`）
-- Post-check result: 每项 ✅ 或 ❌ 并附说明
+- `wt-plan` must not run task-local install/setup commands on trunk.
+- `wt-plan` must not assume a single creation mechanism.
+- Support both of these worktree entry modes:
+  - Codex app handoff using a fresh branch name
+  - Manual `git worktree add`
+- If the task worktree already exists, instruct the user to open that existing worktree instead of creating a second one.
+- Trunk is responsible for task context only; worktree-local state belongs to the task worktree.
 
 ---
 
@@ -241,10 +216,8 @@ Phase 5 通过后，输出：
 ✅ wt-plan complete for <task_id>
 
   Branch:   feat/<task_id>-<slug>
-  Worktree: ../wt-<task_id>
-  Plan ID:  <plan_id>
-
-Next step: Open a terminal in ../wt-<task_id> and say "开工" to start wt-dev.
+  Worktree: <existing path or recommended path>
+Next step: Enter the task worktree using Codex app handoff or a manual git worktree, then say "开工" to start wt-dev.
 ```
 
 ---
@@ -254,4 +227,5 @@ Next step: Open a terminal in ../wt-<task_id> and say "开工" to start wt-dev.
 - 禁止 `git reset --hard` 或 `git checkout -- <path>`。
 - 任何 branch/worktree 变更前必须确认 dirty-tree 状态。
 - Phase 4 中只 stage 四个 plan 相关路径。
+- 不在 trunk 阶段执行 task-local install、ignored local file sync、或其他环境初始化动作。
 - 任何阶段失败时，不继续进入下一阶段。
