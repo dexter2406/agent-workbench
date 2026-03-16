@@ -51,16 +51,13 @@ description: >
 
 ---
 
-## 共用脚本
+## 脚本放置原则
 
-如果多个 skills 需要共用脚本，放在顶层 `scripts/` 目录下，不要在每个 skill 里重复。
+**skill 专属脚本放在自己的 `scripts/` 目录下**，不要提取到顶层。
 
-skill 内部引用时使用相对于仓库根目录的路径，并在 SKILL.md 里注明依赖关系：
+原因：`install.sh` 以 skill 目录为单位做软链接，skill 目录是安装的原子单元。放在 skill 内部的脚本安装后路径稳定（`~/.claude/skills/{name}/scripts/`）；放在顶层则需要 install.sh 单独处理，且 skill 与脚本之间产生跨目录依赖，安装顺序出错时静默失败。
 
-```markdown
-## 依赖
-- 需要 `scripts/utils.sh`（由 install.sh 安装到 ~/.claude/scripts/）
-```
+如果你发现一个脚本"需要被多个 skill 共用"，优先检查 skill 职责划分是否合理，而不是急于提取脚本。真正需要共用的情况极少，且一旦出现，应在 install.sh 里为共用脚本单独设计安装路径，并在每个依赖它的 SKILL.md 里注明依赖关系。
 
 ---
 
