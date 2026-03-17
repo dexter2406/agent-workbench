@@ -11,7 +11,7 @@ my-workbench/
 │   └── parse-frontmatter.py
 │
 ├── skills/                             ← 自定义 skills，安装到 ~/.claude/skills/
-│   ├── agentic-audit/                  ← Agentic 环境质量审查
+│   ├── audit-agent-setup/              ← 多 agent setup 质量审查
 │   │   ├── SKILL.md
 │   │   ├── scripts/                    ← 该 skill 专属脚本
 │   │   │   └── scan-repo.sh
@@ -19,12 +19,12 @@ my-workbench/
 │   │   │   ├── official.md             ← 官方链接 + 离线快照
 │   │   │   └── custom.md               ← 个人经验积累（长期维护）
 │   │   └── examples/
-│   │       ├── claude-md-good.md
-│   │       └── claude-md-bad.md
+│   │       ├── good-agent-instructions.md
+│   │       └── bad-agent-instructions.md
 │   └── .../                            ← 其他自定义 skills
 │
 ├── agents/                             ← 安装到目标项目 .claude/agents/
-│   └── agentic-audit/
+│   └── audit-agent-setup/
 │       └── agent.md                    ← subagent 身份 + 工作流定义
 │
 ├── commands/                           ← 安装到目标项目 .claude/commands/

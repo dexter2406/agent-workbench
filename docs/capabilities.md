@@ -51,13 +51,13 @@ bash agent-workbench/install.sh
 
 | 组件 | 类型 | 说明 |
 |------|------|------|
-| `agentic-audit` | skill（知识库）| 规则库 + 好/坏示例，供 subagent 在审查时加载 |
-| `agentic-audit` | subagent | 执行审查的 AI 角色 |
+| `audit-agent-setup` | skill（知识库）| 多 agent setup 审查规则库 + 好/坏示例，供 subagent 在审查时加载 |
+| `audit-agent-setup` | subagent | 执行 agent setup 审查的 AI 角色 |
 | `audit` | command | `/audit` 触发入口 |
 
-**能力**：深度审查当前项目的 `CLAUDE.md`、agents、skills、commands，判断质量好不好、为什么、怎么改，输出带具体改写示例的报告。不只走 checklist——会指出模糊表述、缺失上下文、误导性写法。
+**能力**：深度审查当前项目的 `AGENTS.md`、`CLAUDE.md`、`GEMINI.md`、agents、skills、commands，判断质量好不好、为什么、怎么改，输出带具体改写示例的报告。不只走 checklist，还会指出模糊表述、缺失上下文、误导性写法，以及跨宿主规则冲突。
 
-**触发**：`/audit`，或对话说"检查项目配置"、"audit"、"agentic readiness"
+**触发**：`/audit`，或对话说“检查 agent 配置”、“audit agent setup”、“review AGENTS.md / CLAUDE.md / GEMINI.md”
 
 ---
 

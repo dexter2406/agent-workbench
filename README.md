@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File scripts/list-visible-skills.ps1
 /audit
 ```
 
-触发 `agentic-audit` subagent，对当前项目的 CLAUDE.md、agents、skills、commands 做深度质量审查，输出带改进建议的报告。
+触发 `audit-agent-setup` subagent，对当前项目的 `AGENTS.md`、`CLAUDE.md`、`GEMINI.md`、agents、skills、commands 做深度质量审查，输出带改进建议的报告。
 
 ### 生成项目上下文文件
 
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File scripts/list-visible-skills.ps1
 agent-workbench/
 ├── install.sh / install.ps1    ← 多宿主安装入口
 ├── skills/                     ← 自定义 skills，安装到已选宿主的 skills/
-│   ├── agentic-audit/          ← audit 知识库（rules + examples）
+│   ├── audit-agent-setup/      ← agent setup 审查知识库（rules + examples）
 │   ├── wt-pm/                  ← WT-PM 工作流知识库
 │   │   ├── SKILL.md            ← 全流程编排入口 skill
 │   │   ├── references/         ← 工作流参考文档
@@ -88,7 +88,7 @@ agent-workbench/
 │   ├── planning-with-files/
 │   └── ...
 ├── agents/                     ← subagents，安装到已选宿主的 agents/
-│   └── agentic-audit/
+│   └── audit-agent-setup/
 │       └── agent.md
 ├── commands/                   ← slash commands，安装到已选宿主的 commands/
 │   └── audit.md
@@ -145,7 +145,7 @@ powershell -ExecutionPolicy Bypass -File skills/verify-registry-state/scripts/ve
 ```bash
 ls -la ~/.claude/skills/
 ls -la ~/.claude/agents/
-cat ~/.claude/skills/agentic-audit/SKILL.md   # 确认内容可读
+cat ~/.claude/skills/audit-agent-setup/SKILL.md   # 确认内容可读
 
 ls -la ~/.codex/skills/
 ls -la ~/.codex/agents/
