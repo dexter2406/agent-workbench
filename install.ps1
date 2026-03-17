@@ -89,33 +89,6 @@ function Install-Link {
     $script:InstalledCount++
 }
 
-function Install-FileCopy {
-    param(
-        [string]$Source,
-        [string]$Destination,
-        [string]$Label
-    )
-
-    if (Test-Path $Destination) {
-        $destinationHash = (Get-FileHash -LiteralPath $Destination).Hash
-        $sourceHash = (Get-FileHash -LiteralPath $Source).Hash
-        if ($destinationHash -eq $sourceHash) {
-            Write-ItemStatus -Level "*" -Message "$Label -> already copied, skipped"
-            $script:SkippedCount++
-            return
-        }
-
-        Write-ItemStatus -Level "WARN" -Message "$Label -> conflict, skipped ($Destination already exists)"
-        $script:SkippedCount++
-        $script:ConflictCount++
-        return
-    }
-
-    Copy-Item -LiteralPath $Source -Destination $Destination
-    Write-ItemStatus -Level "OK" -Message "$Label -> installed"
-    $script:InstalledCount++
-}
-
 function Install-Collection {
     param(
         [string]$HostRoot,
@@ -144,12 +117,7 @@ function Install-Collection {
         }
 
         $destination = Join-Path $destinationDir $item.Name
-        if ($InstallMode -eq "Copy") {
-            Install-FileCopy -Source $item.FullName -Destination $destination -Label $item.Name
-        }
-        else {
-            Install-Link -Source $item.FullName -Destination $destination -Label $item.Name -LinkType $InstallMode
-        }
+        Install-Link -Source $item.FullName -Destination $destination -Label $item.Name -LinkType $InstallMode
     }
 }
 
@@ -168,7 +136,7 @@ else {
         Write-Host "Root: $hostRoot"
         Install-Collection -HostRoot $hostRoot -ChildName "skills" -SourcePath (Join-Path $WorkbenchDir "skills") -ItemKind "Directory" -InstallMode "Junction"
         Install-Collection -HostRoot $hostRoot -ChildName "agents" -SourcePath (Join-Path $WorkbenchDir "agents") -ItemKind "Directory" -InstallMode "Junction"
-        Install-Collection -HostRoot $hostRoot -ChildName "commands" -SourcePath (Join-Path $WorkbenchDir "commands") -ItemKind "File" -InstallMode "Copy"
+        Install-Collection -HostRoot $hostRoot -ChildName "commands" -SourcePath (Join-Path $WorkbenchDir "commands") -ItemKind "File" -InstallMode "SymbolicLink"
         Write-Host ""
     }
 }

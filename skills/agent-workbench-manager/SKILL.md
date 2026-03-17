@@ -10,7 +10,7 @@ user-invocable: true
 
 ## 安装机制
 
-workbench 通过**软链接**安装——`install.sh` / `install.ps1` 把本仓库的 `skills/`、`agents/`、`commands/` 软链接到 `~/.claude/`，修改 workbench 文件后**立即生效**，无需重新安装。
+workbench 通过**链接映射**安装——`install.sh` / `install.ps1` 把本仓库的 `skills/`、`agents/`、`commands/` 链接到 `~/.claude/` 和 `~/.codex/`，修改 workbench 文件后**立即生效**，无需重新安装。
 
 ```bash
 # Linux / macOS / Git Bash
@@ -24,9 +24,9 @@ powershell -ExecutionPolicy Bypass -File \path\to\agent-workbench\install.ps1
 
 | 来源 | 安装到 | 机制 |
 |------|--------|------|
-| `skills/*/` | `~/.claude/skills/` | 软链接 |
-| `agents/*/` | `~/.claude/agents/` | 软链接 |
-| `commands/*` | `~/.claude/commands/` | 软链接 |
+| `skills/*/` | `~/.claude/skills/`, `~/.codex/skills/` | 链接（Windows 为 Junction） |
+| `agents/*/` | `~/.claude/agents/`, `~/.codex/agents/` | 链接（Windows 为 Junction） |
+| `commands/*` | `~/.claude/commands/`, `~/.codex/commands/` | 链接（Windows 为 SymbolicLink） |
 | `templates/CLAUDE.md.tpl` | `<目标项目>/CLAUDE.md` | 复制（仅首次） |
 
 ## 初始化新项目
@@ -44,7 +44,7 @@ ls -la ~/.claude/skills/
 ls -la ~/.claude/agents/
 ls -la ~/.claude/commands/
 # 确认软链接指向 workbench 目录，内容可读
-cat ~/.claude/skills/agentic-audit/SKILL.md
+cat ~/.claude/skills/audit-agent-setup/SKILL.md
 ```
 
 常见问题：
@@ -53,14 +53,14 @@ cat ~/.claude/skills/agentic-audit/SKILL.md
 
 ## 日常维护
 
-- **修改 skill / agent**：直接编辑 workbench 里的文件，保存后自动生效
-- **新增 skill**：在 `skills/` 下创建目录 + `SKILL.md`，重跑 `install.sh` 创建新软链接
+- **修改 skill / agent / command**：直接编辑 workbench 里的文件，保存后自动生效
+- **新增 skill / agent / command**：在对应目录下添加文件后，重跑 `install.sh` / `install.ps1` 创建新链接
 - **更换机器**：在新机器上 clone workbench，重跑 `install.sh` 即可恢复全部配置
 
 ## 已安装内容速查
 
 **Skills（`~/.claude/skills/`）：**
-- `agentic-audit` — 项目 agentic 环境质量审查知识库
+- `audit-agent-setup` — 多 agent 项目配置审查知识库
 - `wt-pm` — WT-PM 工作流知识库（规则、脚本、模板）
 - `wt-plan` — Trunk 规划阶段 skill
 - `wt-dev` — Worktree 开发阶段 skill
@@ -69,7 +69,7 @@ cat ~/.claude/skills/agentic-audit/SKILL.md
 - `agent-workbench-manager` — 本 skill
 
 **Agents（`~/.claude/agents/`）：**
-- `agentic-audit` — 项目环境质量审查 subagent
+- `audit-agent-setup` — 多 agent 项目配置审查 subagent
 
 **Commands（`~/.claude/commands/`）：**
-- `audit` — 触发 agentic-audit 审查
+- `audit` — 触发 audit-agent-setup 审查
