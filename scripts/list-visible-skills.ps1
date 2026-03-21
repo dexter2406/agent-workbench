@@ -2,6 +2,7 @@
 param(
     [string]$ClaudeSkillsRoot,
     [string]$CodexSkillsRoot,
+    [string]$GeminiSkillsRoot,
     [string]$CodexSuperpowersRoot,
     [string]$AgentsSkillsRoot,
     [ValidateSet("Text", "Json")]
@@ -15,6 +16,9 @@ if (-not $ClaudeSkillsRoot) {
 }
 if (-not $CodexSkillsRoot) {
     $CodexSkillsRoot = Join-Path $env:USERPROFILE ".codex\skills"
+}
+if (-not $GeminiSkillsRoot) {
+    $GeminiSkillsRoot = Join-Path $env:USERPROFILE ".gemini\skills"
 }
 if (-not $CodexSuperpowersRoot) {
     $CodexSuperpowersRoot = Join-Path $env:USERPROFILE ".codex\superpowers\skills"
@@ -128,9 +132,14 @@ $codexReport = Get-VisibleHostSkills -HostName "Codex" -SourceSpecs @(
     @{ Label = "personal/global"; Path = $AgentsSkillsRoot }
 )
 
+$geminiReport = Get-VisibleHostSkills -HostName "Gemini" -SourceSpecs @(
+    @{ Label = "installed by workbench"; Path = $GeminiSkillsRoot }
+    @{ Label = "personal/global"; Path = $AgentsSkillsRoot }
+)
+
 $report = [PSCustomObject]@{
     GeneratedAt = (Get-Date).ToString("s")
-    Hosts = @($claudeReport, $codexReport)
+    Hosts = @($claudeReport, $codexReport, $geminiReport)
 }
 
 if ($Format -eq "Json") {

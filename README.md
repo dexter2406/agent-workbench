@@ -13,7 +13,7 @@
 bash /path/to/agent-workbench/install.sh
 
 # 显式只安装到指定宿主
-bash /path/to/agent-workbench/install.sh /path/to/project claude codex
+bash /path/to/agent-workbench/install.sh /path/to/project claude codex gemini
 ```
 
 Windows 使用 `junction` 安装目录内容，通常不需要开发者模式；Bash/Unix 侧仍使用符号链接。
@@ -21,7 +21,7 @@ Windows 使用 `junction` 安装目录内容，通常不需要开发者模式；
 默认行为：
 
 - 自动发现已知宿主目录并安装到这些宿主
-- 当前内置宿主：`claude`、`codex`
+- 当前内置宿主：`claude`、`codex`、`gemini`
 - 也可以在命令后显式追加宿主名，只安装到指定宿主
 - 遇到同名目标时不会删除或覆盖，而是跳过并报告冲突
 
@@ -29,9 +29,9 @@ Windows 使用 `junction` 安装目录内容，通常不需要开发者模式；
 
 | 来源 | 安装到 | 机制 |
 |------|--------|------|
-| `skills/*/` | `~/.claude/skills/`、`~/.codex/skills/` | Windows: junction；Bash/Unix: 软链接 |
-| `agents/*/` | `~/.claude/agents/`、`~/.codex/agents/` | Windows: junction；Bash/Unix: 软链接 |
-| `commands/*` | `~/.claude/commands/`、`~/.codex/commands/` | 复制 |
+| `skills/*/` | `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/` | Windows: junction；Bash/Unix: 软链接 |
+| `agents/*/` | `~/.claude/agents/`、`~/.codex/agents/`、`~/.gemini/agents/` | Windows: junction；Bash/Unix: 软链接 |
+| `commands/*` | `~/.claude/commands/`、`~/.codex/commands/`、`~/.gemini/commands/` | 复制 |
 
 > **约定**：把 agent-workbench 放在固定路径（如 `~/dev/agent-workbench`），不要随意移动——软链接依赖绝对路径。
 
@@ -149,6 +149,9 @@ cat ~/.claude/skills/audit-agent-setup/SKILL.md   # 确认内容可读
 
 ls -la ~/.codex/skills/
 ls -la ~/.codex/agents/
+
+ls -la ~/.gemini/skills/
+ls -la ~/.gemini/agents/
 ```
 
 如果某个宿主识别不到 skill，优先用上面命令确认目录链接是否指向正确路径，以及 `commands/` 文件是否已复制。
