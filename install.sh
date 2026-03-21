@@ -5,7 +5,7 @@ WORKBENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET=""
 REQUESTED_HOSTS=()
 
-KNOWN_HOSTS="claude codex"
+KNOWN_HOSTS="claude codex gemini"
 
 is_known_host() {
   local value="$1"
@@ -21,6 +21,7 @@ resolve_host_home() {
   case "$1" in
     claude) printf '%s/.claude' "$HOME" ;;
     codex) printf '%s/.codex' "$HOME" ;;
+    gemini) printf '%s/.gemini' "$HOME" ;;
     *) return 1 ;;
   esac
 }
@@ -93,6 +94,36 @@ safe_link() {
   INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
 }
 
+safe_copy_file() {
+  local src="$1"
+  local dst="$2"
+  local label="$3"
+
+  if [ -e "$dst" ]; then
+    if [ -d "$dst" ]; then
+      echo "  [WARN] $label -> conflict, skipped ($dst already exists as directory)"
+      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      CONFLICT_COUNT=$((CONFLICT_COUNT + 1))
+      return 0
+    fi
+
+    if cmp -s "$src" "$dst"; then
+      echo "  [*] $label -> already copied, skipped"
+      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      return 0
+    fi
+
+    echo "  [WARN] $label -> conflict, skipped ($dst already exists with different content)"
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    CONFLICT_COUNT=$((CONFLICT_COUNT + 1))
+    return 0
+  fi
+
+  cp "$src" "$dst"
+  echo "  [OK] $label -> installed"
+  INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+}
+
 install_collection() {
   local host="$1"
   local host_home="$2"
@@ -117,7 +148,11 @@ install_collection() {
     matched=1
     local name
     name="$(basename "$item")"
-    safe_link "$item" "$dest_dir/$name" "$name"
+    if [ "$install_mode" = "copy" ]; then
+      safe_copy_file "$item" "$dest_dir/$name" "$name"
+    else
+      safe_link "$item" "$dest_dir/$name" "$name"
+    fi
   done
 
   if [ "$matched" -eq 0 ]; then
@@ -139,7 +174,7 @@ else
     echo "Root: $host_home"
     install_collection "$host" "$host_home" "skills" "$WORKBENCH_DIR"/skills/*/ dir link
     install_collection "$host" "$host_home" "agents" "$WORKBENCH_DIR"/agents/*/ dir link
-    install_collection "$host" "$host_home" "commands" "$WORKBENCH_DIR"/commands/* file link
+    install_collection "$host" "$host_home" "commands" "$WORKBENCH_DIR"/commands/* file copy
     echo ""
   done
 fi

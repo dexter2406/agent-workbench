@@ -188,16 +188,19 @@ function Test-PowerShellAutoDiscoversHosts {
         }
         New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".claude") | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".codex") | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".gemini") | Out-Null
 
         $result = Invoke-InstallPs1 -Workspace $workspace -Arguments @()
         $output = $result.Output
 
         $claudeSkill = Join-Path $workspace.Home ".claude\skills\api-integration-builder"
         $codexSkill = Join-Path $workspace.Home ".codex\skills\api-integration-builder"
+        $geminiSkill = Join-Path $workspace.Home ".gemini\skills\api-integration-builder"
 
         Assert-True (Test-Path $claudeSkill) "Claude auto-discovery install failed."
         Assert-True (Test-Path $codexSkill) "Codex auto-discovery install failed."
-        Assert-Contains $output "Hosts processed: 2" "Expected two processed hosts."
+        Assert-True (Test-Path $geminiSkill) "Gemini auto-discovery install failed."
+        Assert-Contains $output "Hosts processed: 3" "Expected three processed hosts."
     }
     finally {
         Remove-TestWorkspace $workspace
@@ -312,10 +315,34 @@ function Test-BashAutoDiscoversHosts {
 
         New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".claude") | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".codex") | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".gemini") | Out-Null
 
         $result = Invoke-InstallSh -Workspace $workspace -Arguments @()
         $output = $result.Output
-        Assert-Contains $output "Hosts processed: 2" "Expected two processed hosts for bash installer."
+        Assert-Contains $output "Hosts processed: 3" "Expected three processed hosts for bash installer."
+    }
+    finally {
+        Remove-TestWorkspace $workspace
+    }
+}
+
+function Test-PowerShellExplicitGeminiInstall {
+    $workspace = New-TestWorkspace
+    try {
+        if (-not (Test-JunctionSupport)) {
+            Write-Host "[SKIP] junctions unavailable; skipping gemini explicit install test."
+            return
+        }
+        New-Item -ItemType Directory -Path (Join-Path $workspace.Home ".gemini") | Out-Null
+
+        $result = Invoke-InstallPs1 -Workspace $workspace -Arguments @("gemini")
+        $output = $result.Output
+
+        $geminiSkill = Join-Path $workspace.Home ".gemini\skills\api-integration-builder"
+        $claudeSkill = Join-Path $workspace.Home ".claude\skills\api-integration-builder"
+        Assert-True (Test-Path $geminiSkill) "Gemini explicit install failed."
+        Assert-True (-not (Test-Path $claudeSkill)) "Claude should not be installed when gemini is selected."
+        Assert-Contains $output "Host: gemini" "Expected gemini host output."
     }
     finally {
         Remove-TestWorkspace $workspace
@@ -324,6 +351,7 @@ function Test-BashAutoDiscoversHosts {
 
 $tests = @(
     @{ Name = "ps1 explicit host install"; Action = { Test-PowerShellExplicitHostInstall } }
+    @{ Name = "ps1 explicit gemini install"; Action = { Test-PowerShellExplicitGeminiInstall } }
     @{ Name = "ps1 auto-discovers hosts"; Action = { Test-PowerShellAutoDiscoversHosts } }
     @{ Name = "ps1 skips conflicts"; Action = { Test-PowerShellSkipsConflicts } }
     @{ Name = "ps1 skips existing links"; Action = { Test-PowerShellSkipsExistingLinks } }

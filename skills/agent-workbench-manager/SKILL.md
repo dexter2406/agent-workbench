@@ -10,7 +10,7 @@ user-invocable: true
 
 ## 安装机制
 
-workbench 通过**链接映射**安装——`install.sh` / `install.ps1` 把本仓库的 `skills/`、`agents/`、`commands/` 链接到 `~/.claude/` 和 `~/.codex/`，修改 workbench 文件后**立即生效**，无需重新安装。
+workbench 通过**链接映射**安装——`install.sh` / `install.ps1` 把本仓库的 `skills/`、`agents/`、`commands/` 链接到 `~/.claude/`、`~/.codex/` 和 `~/.gemini/`，修改 workbench 文件后**立即生效**，无需重新安装。
 
 ```bash
 # Linux / macOS / Git Bash
@@ -24,9 +24,9 @@ powershell -ExecutionPolicy Bypass -File \path\to\agent-workbench\install.ps1
 
 | 来源 | 安装到 | 机制 |
 |------|--------|------|
-| `skills/*/` | `~/.claude/skills/`, `~/.codex/skills/` | 链接（Windows 为 Junction） |
-| `agents/*/` | `~/.claude/agents/`, `~/.codex/agents/` | 链接（Windows 为 Junction） |
-| `commands/*` | `~/.claude/commands/`, `~/.codex/commands/` | 链接（Windows 为 SymbolicLink） |
+| `skills/*/` | `~/.claude/skills/`, `~/.codex/skills/`, `~/.gemini/skills/` | 链接（Windows 为 Junction） |
+| `agents/*/` | `~/.claude/agents/`, `~/.codex/agents/`, `~/.gemini/agents/` | 链接（Windows 为 Junction） |
+| `commands/*` | `~/.claude/commands/`, `~/.codex/commands/`, `~/.gemini/commands/` | 链接（Windows 为 SymbolicLink） |
 | `templates/CLAUDE.md.tpl` | `<目标项目>/CLAUDE.md` | 复制（仅首次） |
 
 ## 初始化新项目

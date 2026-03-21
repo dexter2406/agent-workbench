@@ -5,6 +5,7 @@ $WorkbenchDir = $PSScriptRoot
 $KnownHosts = @{
     claude = Join-Path $env:USERPROFILE ".claude"
     codex = Join-Path $env:USERPROFILE ".codex"
+    gemini = Join-Path $env:USERPROFILE ".gemini"
 }
 
 $Target = $null
@@ -58,6 +59,42 @@ function Install-Link {
         [string]$LinkType = "SymbolicLink"
     )
 
+    if ($LinkType -eq "Copy") {
+        if (Test-Path $Destination) {
+            $dstItem = Get-Item -LiteralPath $Destination -Force
+            if ($dstItem.PSIsContainer) {
+                Write-ItemStatus -Level "WARN" -Message "$Label -> conflict, skipped ($Destination already exists as directory)"
+                $script:SkippedCount++
+                $script:ConflictCount++
+                return
+            }
+
+            $same = $false
+            try {
+                $same = ((Get-FileHash -Algorithm SHA256 -LiteralPath $Source).Hash -eq (Get-FileHash -Algorithm SHA256 -LiteralPath $Destination).Hash)
+            }
+            catch {
+                $same = $false
+            }
+
+            if ($same) {
+                Write-ItemStatus -Level "*" -Message "$Label -> already copied, skipped"
+                $script:SkippedCount++
+                return
+            }
+
+            Write-ItemStatus -Level "WARN" -Message "$Label -> conflict, skipped ($Destination already exists with different content)"
+            $script:SkippedCount++
+            $script:ConflictCount++
+            return
+        }
+
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+        Write-ItemStatus -Level "OK" -Message "$Label -> installed"
+        $script:InstalledCount++
+        return
+    }
+
     if (Test-Path $Destination) {
         $item = Get-Item -LiteralPath $Destination -Force
         $linkType = $item.LinkType
@@ -84,9 +121,30 @@ function Install-Link {
         return
     }
 
-    New-Item -ItemType $LinkType -Path $Destination -Target $Source | Out-Null
-    Write-ItemStatus -Level "OK" -Message "$Label -> installed"
-    $script:InstalledCount++
+    try {
+        New-Item -ItemType $LinkType -Path $Destination -Target $Source | Out-Null
+        Write-ItemStatus -Level "OK" -Message "$Label -> installed"
+        $script:InstalledCount++
+        return
+    }
+    catch {
+        $sourceItem = Get-Item -LiteralPath $Source -Force
+        if (($LinkType -eq "SymbolicLink") -and (-not $sourceItem.PSIsContainer)) {
+            try {
+                New-Item -ItemType HardLink -Path $Destination -Target $Source | Out-Null
+                Write-ItemStatus -Level "OK" -Message "$Label -> installed (hardlink fallback)"
+                $script:InstalledCount++
+                return
+            }
+            catch {
+                Copy-Item -LiteralPath $Source -Destination $Destination -Force
+                Write-ItemStatus -Level "OK" -Message "$Label -> installed (copy fallback)"
+                $script:InstalledCount++
+                return
+            }
+        }
+        throw
+    }
 }
 
 function Install-Collection {
@@ -136,7 +194,7 @@ else {
         Write-Host "Root: $hostRoot"
         Install-Collection -HostRoot $hostRoot -ChildName "skills" -SourcePath (Join-Path $WorkbenchDir "skills") -ItemKind "Directory" -InstallMode "Junction"
         Install-Collection -HostRoot $hostRoot -ChildName "agents" -SourcePath (Join-Path $WorkbenchDir "agents") -ItemKind "Directory" -InstallMode "Junction"
-        Install-Collection -HostRoot $hostRoot -ChildName "commands" -SourcePath (Join-Path $WorkbenchDir "commands") -ItemKind "File" -InstallMode "SymbolicLink"
+        Install-Collection -HostRoot $hostRoot -ChildName "commands" -SourcePath (Join-Path $WorkbenchDir "commands") -ItemKind "File" -InstallMode "Copy"
         Write-Host ""
     }
 }

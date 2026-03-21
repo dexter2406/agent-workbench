@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -22,7 +22,7 @@ def load_json(path):
     p = Path(path)
     if not p.exists():
         return None
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8-sig"))
 
 skills_state = load_json(skills_lock) or {"skills": []}
 agents_state = load_json(agents_lock) or {}
@@ -37,8 +37,16 @@ def skill_installed(name):
     if not entry:
         return None
     local_path = entry.get("localPath")
-    if local_path and (repo_root / local_path).exists():
-        return True
+    if local_path:
+        local = Path(local_path)
+        if not local.is_absolute():
+            local = repo_root / local_path
+        if local.exists():
+            return True
+    if entry.get("host") == "codex-user":
+        return (Path.home() / ".codex" / "skills" / name).exists()
+    if entry.get("host") == "claude-user":
+        return (Path.home() / ".claude" / "skills" / name).exists()
     return name in (agents_state.get("skills") or {})
 
 def plugin_installed(name, host):
@@ -79,5 +87,3 @@ PY
 echo "Registry 状态已刷新："
 echo "  - $SKILLS_MD"
 echo "  - $PLUGINS_MD"
-
-
