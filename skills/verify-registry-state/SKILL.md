@@ -28,6 +28,8 @@ user-invocable: true
 优先检查 `registry/skills.lock.json` 中声明的本地路径是否存在；如果不存在，再根据 `host` 检查外部管理状态。
 
 当前支持：
+- `codex-user`：检查 `~/.codex/skills/<name>`
+- `claude-user`：检查 `~/.claude/skills/<name>`
 - `.agents`：检查 `~/.agents/.skill-lock.json`
 
 ### Plugins / MCP

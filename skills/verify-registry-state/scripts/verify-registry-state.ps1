@@ -12,13 +12,31 @@ $CodexConfig = Join-Path $env:USERPROFILE ".codex\config.toml"
 
 function Get-JsonOrNull($path) {
     if (-not (Test-Path $path)) { return $null }
-    return Get-Content $path -Raw | ConvertFrom-Json
+    return ([System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false, $true)).Trim([char]0xFEFF)) | ConvertFrom-Json
 }
 
 function Test-SkillInstalled($entry, $agentsState) {
-    $localPath = Join-Path $RepoRoot $entry.localPath
-    if ($entry.localPath -and (Test-Path $localPath)) {
+    $localPath = $null
+    if ($entry.localPath) {
+        if ([System.IO.Path]::IsPathRooted($entry.localPath)) {
+            $localPath = $entry.localPath
+        } else {
+            $localPath = Join-Path $RepoRoot $entry.localPath
+        }
+    }
+
+    if ($localPath -and (Test-Path $localPath)) {
         return $true
+    }
+
+    if ($entry.host -eq "codex-user") {
+        $codexPath = Join-Path $env:USERPROFILE ".codex\skills\$($entry.name)"
+        return (Test-Path $codexPath)
+    }
+
+    if ($entry.host -eq "claude-user") {
+        $claudePath = Join-Path $env:USERPROFILE ".claude\skills\$($entry.name)"
+        return (Test-Path $claudePath)
     }
 
     if ($entry.host -eq ".agents" -and $agentsState -and $agentsState.skills) {

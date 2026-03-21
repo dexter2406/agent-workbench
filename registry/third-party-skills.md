@@ -17,7 +17,7 @@
 - 机器可读元数据见 `registry/skills.lock.json`
 - `skills.lock.json` 保存上游来源、安装时间和更新信息，`third-party-skills.md` 作为人工查阅入口
 - ✅ 已装：当前机器上已可用
-- ⬜ 待装：列入计划但尚未安装
-- ⏸️ 暂停：保留记录但当前未启用
-- 自建 skills 不登记在这里；这里只记录第三方 skill，当前优先采用 vendoring 到 `skills/` 的方式管理
+- ⬜ 未装：已登记，但当前机器未检测到
+- 自建 skills 不登记在这里；这里只记录第三方 skill，默认记录用户目录安装态，按需 vendor 到 `skills/`
+
 

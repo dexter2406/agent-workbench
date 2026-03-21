@@ -2,8 +2,8 @@
 
 ## 定位
 
-`registry/` 是纯粹的人类可读备忘清单，不参与任何脚本逻辑。
-用途：记录你手动安装的第三方工具，方便换机器或重新初始化时查阅。
+`registry/` 是第三方资产的登记入口。
+用途：记录你安装或 vendoring 的第三方工具，方便换机器、重装和状态校验。
 
 ## 文件格式
 
@@ -12,15 +12,15 @@
 ```markdown
 # Third-party Skills
 
-| Skill | 安装命令 | 状态 |
-|-------|----------|------|
-| creative-design/ui-design-system | `npx claude-code-templates@latest --skill creative-design/ui-design-system` | ⬜ 待装 |
-| development-team/ui-ux-designer  | `npx claude-code-templates@latest --skill development-team/ui-ux-designer`  | ⬜ 待装 |
+| Skill | 宿主 | 来源 | 状态 | 备注 |
+|-------|------|------|------|------|
+| frontend-design | installed in ~/.codex/skills | `anthropics/skills` | ✅ 已装 | 已安装到 `C:/Users/name/.codex/skills/frontend-design`；上游元数据见 `registry/skills.lock.json` |
+| web-design | vendored in this repo | `vercel-labs/agent-skills` | ✅ 已装 | 已收录到 `skills/web-design/`；上游元数据见 `registry/skills.lock.json` |
 
 ## 说明
-- ✅ 已装：已手动安装到 ~/.claude/skills/
-- ⬜ 待装：列入计划但尚未安装
-- ⏸️ 暂停：曾经使用，暂时停用
+- ✅ 已装：当前机器上可用
+- ⬜ 未装：registry 已登记，但当前机器未检测到
+- `registry/skills.lock.json` 保存机器可读元数据，含来源、宿主、路径与更新命令
 ```
 
 ### `registry/plugins.md`
