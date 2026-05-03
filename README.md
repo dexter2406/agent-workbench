@@ -29,11 +29,11 @@ Windows 使用 `junction` 安装目录内容，通常不需要开发者模式；
 
 | 来源 | 安装到 | 机制 |
 |------|--------|------|
-| `skills/*/` | `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/` | Windows: junction；Bash/Unix: 软链接 |
-| `agents/*/` | `~/.claude/agents/`、`~/.codex/agents/`、`~/.gemini/agents/` | Windows: junction；Bash/Unix: 软链接 |
+| `skills/`（整目录） | `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/` | 整目录 junction（宿主 skills/ 即 workbench skills/） |
+| `agents/*/` | `~/.claude/agents/`、`~/.codex/agents/`、`~/.gemini/agents/` | 每 agent 单独 junction |
 | `commands/*` | `~/.claude/commands/`、`~/.codex/commands/`、`~/.gemini/commands/` | 复制 |
 
-> **约定**：把 agent-workbench 放在固定路径（如 `~/dev/agent-workbench`），不要随意移动——软链接依赖绝对路径。
+> **约定**：把 agent-workbench 放在固定路径（如 `~/dev/agent-workbench`），不要随意移动——junction 依赖绝对路径。
 
 ---
 
@@ -41,7 +41,7 @@ Windows 使用 `junction` 安装目录内容，通常不需要开发者模式；
 
 ### 修改立即生效
 
-`skills/` 和 `agents/` 会直接指向本仓库；`commands/` 使用复制，如有变更需要重跑安装器同步。
+`skills/` 整目录和各 `agents/` 直接指向本仓库；`commands/` 使用复制，如有变更需要重跑安装器同步。
 
 ### 核对宿主最终可见 skills
 
@@ -107,7 +107,10 @@ agent-workbench/
 
 1. 在 `skills/` 下创建目录，加 `SKILL.md`（frontmatter 格式见 [docs/workbench-design/02-skills-spec.md](docs/workbench-design/02-skills-spec.md)）
 2. skill 专属脚本放进该 skill 自己的 `scripts/` 目录，不要默认提取到仓库顶层
-3. 重跑 `install.sh` 创建新软链接
+
+新 skill 无需重跑安装器——`skills/` 整目录是 junction，新增文件立即对所有宿主可见。
+
+第三方 skill 通过 `npx skills add <pkg> -g -y` 安装，会自动落入本仓库 `skills/` 目录，同样立即生效。安装后在 `registry/third-party-skills.md` 补登记。
 
 ---
 
@@ -117,16 +120,15 @@ agent-workbench/
 
 当前按资产类型拆分：
 
-- `registry/third-party-skills.md`：第三方 skills 的人工清单
-- `registry/skills.lock.json`：skills 的机器可读元数据
+- `registry/third-party-skills.md`：第三方 skills 的人工清单（人工查阅入口）
+- `skills-lock.json`（根目录）：`npx skills` 自动维护，第三方 skills 的机器可读来源与哈希，**以此为准**
 - `registry/plugins.md`：第三方 plugins / MCP 的人工清单
 
 记录原则：
 
-- 只登记第三方资产，不登记本仓库自建内容
-- 以“安装单位”记录，不展开插件内每个附带文件
-- 优先写清来源、安装方式、配置入口和当前状态
-- 第三方 skills 的上游元数据统一保存在 `registry/skills.lock.json`，不把 `.agents/` 之类的本机状态目录提交到仓库
+- 只登记第三方资产，不登记本仓库自建 skill
+- 以”安装单位”记录，不展开插件内每个附带文件
+- 优先写清来源平台、安装命令和当前状态
 
 ### 刷新第三方状态
 

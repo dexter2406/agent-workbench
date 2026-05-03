@@ -1,27 +1,26 @@
 ﻿# Third-party Skills
 
-| Skill | 宿主 | 来源 | 状态 | 备注 |
-|-------|------|------|------|------|
-| vercel-react-best-practices | vendored in this repo | `vercel-labs/agent-skills` | ✅ 已装 | 已收录到 `skills/vercel-react-best-practices/`；上游元数据见 `registry/skills.lock.json` |
-| frontend-design | vendored in this repo | `anthropics/skills` | ✅ 已装 | 已收录到 `skills/frontend-design/`；上游元数据见 `registry/skills.lock.json` |
-| grill-me | vendored in this repo | `mattpocock/skills` | ✅ 已装 | 已收录到 `skills/grill-me/`；上游元数据见 `registry/skills.lock.json` |
-| to-prd | vendored in this repo | `mattpocock/skills` | ✅ 已装 | 已收录到 `skills/to-prd/`；上游元数据见 `registry/skills.lock.json` |
-| powershell-windows | vendored in this repo | `davila7/claude-code-templates` | ✅ 已装 | 已收录到 `skills/powershell-windows/`；上游元数据见 `registry/skills.lock.json` |
-| find-skills | vendored in this repo | `vercel-labs/skills` | ✅ 已装 | 已收录到 `skills/find-skills/`；上游元数据见 `registry/skills.lock.json` |
-| continuous-learning | vendored in this repo | `affaan-m/everything-claude-code` | ✅ 已装 | 已收录到 `skills/continuous-learning/`；上游元数据见 `registry/skills.lock.json` |
-| skill-creator | vendored in this repo | `anthropics/skills` | ✅ 已装 | 已收录到 `skills/skill-creator/`；上游元数据见 `registry/skills.lock.json` |
-| api-integration-builder | vendored in this repo | `daffy0208/ai-dev-standards` | ✅ 已装 | 已收录到 `skills/api-integration-builder/`；上游元数据见 `registry/skills.lock.json` |
-| code-review | vendored in this repo | `supercent-io/skills-template` | ✅ 已装 | 已收录到 `skills/code-review/`；上游元数据见 `registry/skills.lock.json` |
-| documentation-generator | vendored in this repo | `jorgealves/agent_skills` | ✅ 已装 | 已收录到 `skills/documentation-generator/`；上游元数据见 `registry/skills.lock.json` |
-| git-workflow | vendored in this repo | `supercent-io/skills-template` | ✅ 已装 | 已收录到 `skills/git-workflow/`；上游元数据见 `registry/skills.lock.json` |
-| prompt-optimizer | vendored in this repo | `daymade/claude-code-skills` | ✅ 已装 | 已收录到 `skills/prompt-optimizer/`；上游元数据见 `registry/skills.lock.json` |
-| test-generator | vendored in this repo | `oimiragieo/agent-studio` | ✅ 已装 | 已收录到 `skills/test-generator/`；上游元数据见 `registry/skills.lock.json` |
+| Skill | 来源平台 | 安装命令 | 状态 |
+|-------|----------|----------|------|
+| frontend-design | `anthropics` | `npx skills add anthropics/skills@frontend-design -g -y` | ✅ 已装 |
+| skill-creator | `anthropics` | — | ✅ 已装 |
+| grill-me | `mattpocock` | `npx skills add mattpocock/skills@grill-me -g -y` | ✅ 已装 |
+| to-prd | `mattpocock` | `npx skills add mattpocock/skills@to-prd -g -y` | ✅ 已装 |
+| vercel-react-best-practices | `vercel-labs` | `npx skills add vercel-labs/agent-skills@vercel-react-best-practices -g -y` | ✅ 已装 |
+| find-skills | `vercel-labs` | `npx skills add vercel-labs/skills@find-skills -g -y` | ✅ 已装 |
+| powershell-windows | `davila7` | `npx skills add davila7/claude-code-templates@powershell-windows -g -y` | ✅ 已装 |
+| continuous-learning | `affaan-m` | — | ✅ 已装 |
+| api-integration-builder | `daffy0208` | `npx skills add daffy0208/ai-dev-standards@api-integration-builder -g -y` | ✅ 已装 |
+| code-review | `supercent-io` | `npx skills add supercent-io/skills-template@code-review -g -y` | ✅ 已装 |
+| git-workflow | `supercent-io` | `npx skills add supercent-io/skills-template@git-workflow -g -y` | ✅ 已装 |
+| documentation-generator | `jorgealves` | `npx skills add jorgealves/agent_skills@documentation-generator -g -y` | ✅ 已装 |
+| prompt-optimizer | `daymade` | `npx skills add daymade/claude-code-skills@prompt-optimizer -g -y` | ✅ 已装 |
+| test-generator | `oimiragieo` | `npx skills add oimiragieo/agent-studio@test-generator -g -y` | ✅ 已装 |
 
 ## 说明
-- 机器可读元数据见 `registry/skills.lock.json`
-- `skills.lock.json` 保存上游来源、安装时间和更新信息，`third-party-skills.md` 作为人工查阅入口
-- ✅ 已装：当前机器上已可用
-- ⬜ 未装：已登记，但当前机器未检测到
-- 自建 skills 不登记在这里；这里只记录第三方 skill，默认记录用户目录安装态，按需 vendor 到 `skills/`
+- 所有第三方 skills 均 vendor 到 `skills/` 目录，通过整目录 junction 对所有宿主可见
+- 安装命令详见 `registry/skills.lock.json`；根目录 `skills-lock.json` 由 npx 自动维护，为安装来源的权威记录
+- ✅ 已装：当前机器上已可用；⬜ 未装：已登记但未检测到
+- 自建 skills 不登记在此
 
 

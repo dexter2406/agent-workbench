@@ -192,7 +192,7 @@ else {
         $HostsProcessed++
         Write-Host "Host: $hostName"
         Write-Host "Root: $hostRoot"
-        Install-Collection -HostRoot $hostRoot -ChildName "skills" -SourcePath (Join-Path $WorkbenchDir "skills") -ItemKind "Directory" -InstallMode "Junction"
+        Install-Link -Source (Join-Path $WorkbenchDir "skills") -Destination (Join-Path $hostRoot "skills") -Label "skills" -LinkType "Junction"
         Install-Collection -HostRoot $hostRoot -ChildName "agents" -SourcePath (Join-Path $WorkbenchDir "agents") -ItemKind "Directory" -InstallMode "Junction"
         Install-Collection -HostRoot $hostRoot -ChildName "commands" -SourcePath (Join-Path $WorkbenchDir "commands") -ItemKind "File" -InstallMode "Copy"
         Write-Host ""
