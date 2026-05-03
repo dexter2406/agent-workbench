@@ -46,7 +46,7 @@ These are near-misses that should not automatically route here:
 
 By default, write the handoff file under the current repository root:
 
-`session-handoffs/session-handoff-YYYYMMDD-HHMM.md`
+`docs/exchange/handoffs/session-handoff-YYYYMMDD-HHMM.md`
 
 If the user explicitly provides another destination, follow that instead.
 

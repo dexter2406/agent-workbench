@@ -1,18 +1,7 @@
 {
   "min_session_length": 10,
-  "extraction_threshold": "medium",
-  "auto_approve": false,
-  "learned_skills_path": "~/.claude/skills/learned/",
-  "patterns_to_detect": [
-    "error_resolution",
-    "user_corrections",
-    "workarounds",
-    "debugging_techniques",
-    "project_specific"
-  ],
-  "ignore_patterns": [
-    "simple_typos",
-    "one_time_fixes",
-    "external_api_issues"
-  ]
+  "candidate_name_prefix": "learned",
+  "pending_dir": "skills/continuous-learning/pending",
+  "state_file": "skills/continuous-learning/pending/state.json",
+  "index_file": "skills/continuous-learning/pending/index.json"
 }

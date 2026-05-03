@@ -1,4 +1,4 @@
-# Technology Investigation
+# Technology Stack
 
 ## Role Of This Document
 - Purpose:
@@ -11,24 +11,22 @@
 - Principle 3:
 
 ## Candidate Stack
-- Frontend:
-- Backend:
-- Database:
-- ORM / schema management:
-- Hosting / deployment:
+- Runtime / language:
+- UI / frontend:
+- Backend / services:
+- Data storage:
 - External integrations:
+- Build / packaging / deployment:
 
 ## Why These Choices Fit The Project
 - Match to project goals:
 - Match to scope constraints:
 - Match to delivery constraints:
 
-## How The Stack Supports Required Features
-- Vehicle configuration and ordering:
-- Merchandise shop:
-- Media content:
-- Map integration:
-- Gemini-powered AI feature:
+## Current Recommendation
+- Recommended direction:
+- Alternatives considered:
+- Reasoning:
 
 ## Status
 - Confirmed choices:

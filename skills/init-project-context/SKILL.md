@@ -1,94 +1,107 @@
 ---
 name: init-project-context
-description: Use when starting a new or under-documented repository that lacks a clear project definition. Use this skill when the project purpose, deliverables, boundaries, or candidate tech direction are still vague and need to be clarified before implementation planning. Default to stabilizing project context first; only draft agent instruction files later if the user explicitly wants them.
+description: Use when starting a new or under-documented repository that lacks a clear project definition. Use this skill when the project purpose, deliverables, boundaries, doc taxonomy, or candidate tech direction are still vague and need to be clarified before implementation planning. Default to stabilizing project context first; only draft lightweight agent instruction files later if the user explicitly wants them.
 ---
 
 # Init Project Context
 
 ## Overview
 
-Initialize project foundation before feature planning. The goal is to turn a vague repository into one with enough project definition, scope boundaries, and technical direction to support later planning.
+Initialize project foundation before feature planning. The goal is to turn a vague repository into one with enough project definition, scope boundaries, document structure, and technical direction to support later planning.
 
 Common path for early-stage repositories:
-`stabilize project meaning -> choose technical direction -> write solution-level plan -> optionally prepare WT-PM task artifacts`
+`stabilize project meaning -> choose technical direction -> write docs/top-level-knowledge -> optionally create epic/function/implementation planning docs`
 
-**REQUIRED SUB-SKILL:** Use `brainstorming` for the conversational discovery style.
+**REQUIRED SUB-SKILL:** Use `brainstorming` for conversational discovery.
 
 This skill does **not** start by writing agent entry files. It first stabilizes the project itself. Agent entry files are optional follow-up outputs, not the default center of gravity.
 
-If the user clearly intends to enter WT-PM or another task/worktree workflow next, this skill may continue past foundation docs into solution-level planning and then an execution handoff. That extension is still part of project-context initialization; it is not a replacement for `wt-plan`.
+If the user clearly intends to enter WT-PM or another task/worktree workflow next, this skill may continue past foundation docs into planning and handoff. That extension is still part of project-context initialization; it is not a replacement for `wt-plan`.
 
-When agent entry files are needed, treat `AGENTS.md` as the single source of truth. Do not maintain parallel content in `CLAUDE.md`, `GEMINI.md`, or similar files. If a tool-specific filename is required, first try a filesystem symlink that points back to `AGENTS.md`. If symlink creation is blocked by platform permissions, fall back to a hard link. Only fall back to a copied file when linking is impossible.
+## Default Documentation Taxonomy
 
-## When to Use
+Use this `docs/` taxonomy by default for new or reorganized projects:
 
-Use this skill when:
-- A repository has no usable agent entry file strategy
-- Existing docs are too thin or too vague for agent-assisted development
-- A user can describe the project only loosely
-- You need to establish project goals, scope, constraints, and candidate tech direction before planning features
-- You want foundation docs that future planning sessions can reuse
+- `docs/top-level-knowledge/` — stable project knowledge: project context, technology stack, architecture notes, porting references, core logic maps.
+- `docs/epic-plans/` — epic-level plans, roadmaps, milestone direction, and broad acceptance strategy.
+- `docs/func-design/` — focused feature/module designs that close part of an epic.
+- `docs/impl-plans/` — temporary coding plans, detailed implementation steps, sequencing, and verification notes.
+- `docs/impl-plans/archive/` — completed implementation plans after implementation and acceptance.
 
-Do not use this skill for:
-- Small single-task coding work in an already well-documented repository
-- Updating one small section of an existing instruction file without broader ambiguity
+Each of the four main `docs/` directories should have a short `README.md` that defines the directory's purpose. These README files are not file indexes and should not try to maintain a list of every document inside.
 
-## Core Principle
+Root-level structure outside `docs/` is project-specific. The only default extra convention is `exchange/`:
 
-**Do not write instruction files or implementation plans from a fuzzy project description.**
-
-First collect enough facts and boundaries to make planning reliable. By default, stabilize the project definition first and defer agent instructions until the user explicitly asks for them.
-
-**Do not jump directly from a fuzzy project description to WT-PM task creation.** Stabilize foundation docs and solution-level intent first.
+- `exchange/` is for temporary information exchange, scratch notes, copied snippets, one-off research dumps, and transient handoff material.
+- `exchange/` is not a long-term knowledge source.
+- Add `exchange/` to `.gitignore` by default when creating it.
 
 ## Output Model
 
-This skill works in three layers, plus optional agent entry docs.
+This skill works in three documentation layers, plus optional agent entry docs.
 
-### Layer 1: Foundation Docs
+### Layer 1: Top-Level Knowledge
 
 Create or draft these first:
-- `project-context.md`
-- `tech-stack-investigate.md`
+
+- A project definition document under `docs/top-level-knowledge/`, such as `project-context.md`, `prd.md`, or an existing equivalent name.
+- `docs/top-level-knowledge/tech-stack.md`
 
 Purpose: project definition. These documents explain what the project is, why it exists, what milestone matters now, and the provisional technical direction.
 
-### Layer 2: Solution-Level Planning Docs
+For greenfield repositories, default to `project-context.md`. For existing repositories, keep a clear existing name such as `prd.md` instead of renaming it mechanically.
 
-Create these after Layer 1 is stable when the user needs an approved implementation direction:
-- `docs/plans/*`
+### Layer 2: Planning And Design Docs
 
-Purpose: solution planning. These documents freeze product, design, and technical direction for a milestone or feature area. They guide execution, but they are not the same thing as tracked task plans.
+Create these after Layer 1 is stable when the user needs approved direction:
 
-### Layer 3: Execution Handoff Docs
+- `docs/epic-plans/*` for milestone, roadmap, and epic-level direction.
+- `docs/func-design/*` for feature/module design details that serve an epic.
 
-Create these only when the user is ready to decompose work into tracked tasks:
-- `plans/todo_current.md`
-- `plans/workplans/*`
+Purpose: solution planning. These documents freeze product, design, and technical direction at the right granularity before implementation.
 
-Purpose: execution tracking. These artifacts break approved solution intent into task-level units for WT-PM or similar workflows.
+### Layer 3: Implementation Plans
+
+Create these only when the user is ready to decompose approved direction into coding work:
+
+- `docs/impl-plans/*`
+- `docs/impl-plans/archive/*` for completed and accepted implementation plans.
+
+Purpose: execution tracking. These artifacts break approved intent into task-level work with dependencies, sequencing, file-level notes, and verification commands. They are temporary by nature.
 
 ### Optional Layer 4: Agent Entry Docs
 
 Create these only after Layer 1 is stable and only if the user explicitly wants them:
-- `AGENTS.md`
-- tool-specific aliases such as `CLAUDE.md` or `GEMINI.md` that resolve back to `AGENTS.md`
 
-If the repository is still ambiguous, stop after Layer 1 and list the remaining open questions. Do not create solution plans or execution-tracking artifacts from an unresolved project definition.
+- One canonical instruction file chosen for the project's actual agent host, such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`.
+- Any additional host-specific filenames should point to the canonical file through a symlink, hard link, or short pointer file.
+
+Do not hardcode `AGENTS.md` as the universal canonical file. Confirm or infer the main host first. For example:
+
+- Claude-first projects may keep the body in `CLAUDE.md` and make `AGENTS.md` point to it.
+- Codex-first projects may keep the body in `AGENTS.md` and make `CLAUDE.md` point to it if needed.
+
+Keep agent entry files lightweight: scope, documentation index, commands, rules, and critical constraints. Do not dump project details into them. Use progressive disclosure: point agents to the relevant documentation directories and let them open only the docs needed for the current task.
+
+If the repository is still ambiguous, stop after Layer 1 and list remaining open questions. Do not create planning, implementation, or agent-entry artifacts from unresolved project definition.
 
 ## Workflow
 
 ### Phase 1: Repo Discovery
 
 Before asking questions, inspect the repository for discoverable facts:
+
 - top-level structure
+- current `docs/` structure and existing knowledge/planning docs
 - runtime manifests and lockfiles
 - backend/frontend entrypoints
 - test commands
-- existing docs, plans, and architecture notes
-- signals of workflow conventions such as task trackers, worktrees, CI, schema directories
+- CI, scripts, schema directories, task trackers, worktree conventions
+- existing agent entry files and whether they duplicate each other
+- existing `.gitignore` and whether transient exchange/scratch directories are ignored
 
 Record findings under these buckets:
+
 - `confirmed facts`
 - `reasonable inferences`
 - `critical gaps`
@@ -101,6 +114,7 @@ Never ask the user for information that the repository already makes clear.
 Use guided discovery to close the highest-impact gaps.
 
 Ask one question at a time. Each question must help determine at least one of:
+
 - project purpose
 - primary user or audience
 - current milestone
@@ -109,10 +123,13 @@ Ask one question at a time. Each question must help determine at least one of:
 - educational or business context
 - candidate technical direction
 - hard constraints
+- preferred documentation taxonomy if the default does not fit
+- canonical agent entry file, if agent files are requested
 
 If the user answers vaguely, do not move on. Narrow the current question until it is actionable.
 
 Use this pattern:
+
 1. summarize what is already known
 2. state what is still unclear
 3. ask one high-value question
@@ -123,110 +140,132 @@ Once the repository is sufficiently defined, draft the foundation docs using the
 
 Use repository evidence plus user answers. Mark uncertain content explicitly instead of pretending certainty.
 
-### Phase 4: Solution Planning
+Create the four `docs/` directory README files when creating the taxonomy. Keep each README short and definitional.
 
-Once the foundation docs are stable and the user wants an implementation direction:
-- create or update solution-level plans under `docs/plans/*`
-- use those plans to freeze product, design, and technical direction
-- treat these plans as the source of truth for what should be built at the solution level
+### Phase 4: Planning And Design
 
-Rules:
-- use `docs/plans/*` to lock intent before task decomposition
-- do not confuse a solution-level plan with WT-PM task plans
-- if the design is still changing, stay here instead of preparing tracked execution artifacts
+Once the foundation docs are stable and the user wants implementation direction:
 
-### Phase 5: Execution Handoff
-
-Only after the solution direction is approved and the user wants tracked execution:
-- create or update `plans/todo_current.md`
-- create or update `plans/workplans/*`
-- decompose the approved plan into task-level work with dependencies and sequencing
+- create or update epic-level plans under `docs/epic-plans/`
+- create or update feature/module designs under `docs/func-design/`
+- use those docs to freeze product, design, and technical direction before coding
 
 Rules:
-- use `plans/todo_current.md` plus `plans/workplans/*` only when the user is ready to break work into tracked tasks
-- if both `docs/plans/*` and WT-PM task plans exist, the task-level plans must follow the approved higher-level plan unless the user intentionally revises the design
-- this phase prepares handoff into WT-PM; it does not replace `wt-plan` branch/worktree lifecycle management
+
+- use `docs/epic-plans/` for broad milestone direction
+- use `docs/func-design/` for narrower feature/module decisions
+- do not confuse design/planning docs with temporary implementation plans
+- if the design is still changing, stay here instead of preparing implementation plans
+
+### Phase 5: Implementation Handoff
+
+Only after the solution direction is approved and the user wants coding work decomposed:
+
+- create or update implementation plans under `docs/impl-plans/`
+- include dependencies, sequencing, task-local findings, file-level notes, and verification commands
+- move completed and accepted plans to `docs/impl-plans/archive/`
+
+If the repository uses WT-PM or another tracked execution workflow, adapt these docs to that workflow without duplicating the full WT-PM lifecycle here.
 
 #### No-git bootstrap mode
 
 If the repository is not yet a git repo or cannot support worktrees yet:
-- it is still acceptable to prepare `plans/todo_current.md` and `plans/workplans/*` as bootstrap artifacts
-- explicitly mark them as pre-WT-PM bootstrap files
+
+- it is still acceptable to prepare `docs/impl-plans/` bootstrap artifacts
+- explicitly mark them as pre-WT-PM or pre-tracking bootstrap files
 - do not pretend branches, trunk, or worktrees already exist
 - defer formal `wt-plan` execution until git/trunk/worktree prerequisites are available
 
 ### Phase 6: Instruction Drafting
 
 Only after foundation docs are strong enough, and after any needed planning/handoff layers are in place:
-- draft `AGENTS.md`
-- identify which agent-specific filenames are actually required
-- if needed, create aliases from those filenames back to `AGENTS.md`
-- use this fallback order: symlink, then hard link, then copied file with a warning about duplication risk
-- keep one authoritative content file instead of duplicating instructions across agents
 
-Do not dump all details into the entry files. Keep them as navigation and operating instructions, not giant project encyclopedias.
+- choose one canonical agent entry file based on actual project usage
+- create the canonical file with scope, documentation index, commands, rules, and constraints only
+- identify which additional host-specific filenames are actually required
+- prefer symlink, then hard link, then short pointer file for non-canonical names
+- keep one authoritative instruction body instead of duplicating content across agents
 
-Before creating any compatibility alias, confirm the user really uses that agent. Example: if the user confirms Claude tooling, create `CLAUDE.md` as a symlink to `AGENTS.md`, or a hard link if symlink permissions are unavailable. If there is no confirmed consumer, do not create speculative aliases.
-
-If WT-PM or tracked execution is expected, keep the agent entry files aligned with the layered planning model:
-- foundation docs define the project
-- `docs/plans/*` define approved solution intent
-- `plans/todo_current.md` plus `plans/workplans/*` define tracked execution
+Before creating compatibility aliases, confirm the user really uses that agent. If there is no confirmed consumer, do not create speculative aliases.
 
 ## Sufficiency Check
 
 The project is ready for instruction drafting only if all of these are true:
 
-- The project purpose is explicit
-- The primary users or operators are explicit
-- The current milestone or delivery horizon is explicit
-- Required deliverables are explicit
-- In-scope and out-of-scope are explicit enough for planning
-- There is at least a provisional candidate tech direction or an explicit statement that tech selection is still open
-- Future planning would not depend on repeated oral clarification of core context
+- The project purpose is explicit.
+- The primary users or operators are explicit.
+- The current milestone or delivery horizon is explicit.
+- Required deliverables are explicit.
+- In-scope and out-of-scope are explicit enough for planning.
+- There is at least a provisional candidate tech direction or an explicit statement that tech selection is still open.
+- The documentation taxonomy is clear enough for future docs to be placed predictably.
+- Future planning would not depend on repeated oral clarification of core context.
 
 If any of these fail, continue discovery instead of drafting instruction files.
 
-The project is ready for WT-PM handoff only if all of these are also true:
+The project is ready for implementation handoff only if all of these are also true:
 
-- The current milestone is explicit enough to plan task boundaries
-- The first task decomposition is explicit enough to create task rows
-- Dependencies and sequencing are clear enough to assign order or parallelism
-- The user actually wants tracked execution rather than direct implementation from an approved plan
+- The current milestone is explicit enough to plan task boundaries.
+- The first task decomposition is explicit enough to create implementation plan docs.
+- Dependencies and sequencing are clear enough to assign order or parallelism.
+- The user actually wants tracked or written implementation planning rather than direct implementation.
 
-If any of these fail, keep working at the foundation or solution-planning layer instead of creating execution-tracking artifacts.
+If any of these fail, keep working at the foundation or planning/design layer.
 
 ## Heuristics
 
 ### Treat as Project-Specific
 
-Usually keep in foundation docs or project entry docs:
+Usually keep in `docs/top-level-knowledge/`:
+
 - project background and rationale
 - business domain and user scenarios
 - milestone status
 - required deliverables
 - in-scope / out-of-scope boundaries
 - technical direction that is still provisional
+- stable architecture or porting references
 
-Usually keep in solution-level planning docs:
-- approved product flow
-- architecture direction for the current milestone
-- implementation sequencing at the feature level
-- milestone-specific acceptance criteria
+Usually keep in `docs/epic-plans/`:
 
-Usually keep in execution-tracking docs:
+- approved milestone strategy
+- broad product flow
+- multi-feature roadmap
+- epic-level acceptance criteria
+
+Usually keep in `docs/func-design/`:
+
+- feature/module behavior
+- component boundaries
+- data flow
+- error handling
+- narrower acceptance criteria
+
+Usually keep in `docs/impl-plans/`:
+
 - task rows and task ids
-- per-task dependencies
+- sequencing and dependencies
+- file-by-file coding notes
 - task-local findings and progress logs
-- WT-PM execution status
+- verification commands and status
+
+Usually keep in agent entry files:
+
+- scope and repository boundaries
+- lightweight documentation index
+- common commands
+- durable rules and constraints
+- host-specific compatibility notes
 
 ### Treat as Reusable Template Material
 
-Usually fit into instruction scaffolds:
+Usually fit into skill templates:
+
 - section structures
-- lightweight reading order
+- directory README definitions
+- lightweight documentation index pattern
+- canonical-agent-file selection guidance
 - links back to shared context docs
-- agent-specific link targets and compatibility notes
 
 ## Question Areas
 
@@ -238,54 +277,63 @@ When discovery leaves gaps, prioritize these topics in order:
 4. What must be delivered?
 5. What is explicitly out of scope?
 6. What technical direction is currently being considered?
-7. Does the user want a solution-level plan after context stabilization?
-8. Does the user intend to enter WT-PM or another tracked execution workflow next?
-9. Which agent entry filenames are actually needed, if any?
+7. Does the default `docs/` taxonomy fit this project?
+8. Does the user want epic-level planning, function/module design, or implementation planning after context stabilization?
+9. Does the user intend to enter WT-PM or another tracked execution workflow next?
+10. Which agent entry filename should be canonical, if any?
 
 ## Drafting Rules
 
-- Prefer concise, operational language
-- Separate facts from assumptions
-- Separate project definition from technical speculation
-- Prefer templates with placeholders over fake certainty
-- Preserve future extensibility without forcing agent scaffolding too early
-- Separate project definition, solution planning, and execution tracking instead of collapsing them into one file set
-- Keep `AGENTS.md` as the only maintained instruction body
-- Prefer links over duplicated agent-specific instruction files
-- Use symlinks first, hard links second, copies last
-- Do not create agent-specific aliases until their consumers are confirmed
-- Do not create WT-PM task artifacts until the approved solution direction is stable enough to decompose
+- Prefer concise, operational language.
+- Separate facts from assumptions.
+- Separate project definition from technical speculation.
+- Prefer templates with placeholders over fake certainty.
+- Preserve future extensibility without forcing agent scaffolding too early.
+- Separate top-level knowledge, epic plans, function designs, and implementation plans instead of collapsing them into one file set.
+- Keep existing project-definition filenames when they are clear, such as `prd.md`; do not force-rename them to `project-context.md`.
+- Use `tech-stack.md` for the default technology-stack document.
+- Keep directory README files definitional; do not maintain file indexes there.
+- Keep one canonical agent instruction body; point other host files to it.
+- Prefer links or aliases over duplicated agent-specific instruction files.
+- Use symlinks first, hard links second, short pointer files last.
+- Do not create agent-specific aliases until their consumers are confirmed.
+- Do not create implementation plan artifacts until approved direction is stable enough to decompose.
+- Add `exchange/` to `.gitignore` if creating or relying on that temporary directory.
 
 ## Common Mistakes
 
 | Mistake | Better Approach |
 |---|---|
-| Drafting `AGENTS.md` immediately | Build foundation docs first |
+| Drafting agent entry files immediately | Build top-level knowledge first |
 | Asking broad questions in batches | Ask one high-value question at a time |
 | Treating vague goals as sufficient | Narrow them to a milestone and success condition |
-| Jumping straight from context discovery to WT-PM tasks | Freeze solution-level intent in `docs/plans/*` first |
+| Jumping straight from context discovery to implementation plans | Freeze direction in epic/function docs first |
 | Repeating repo facts back as questions | Discover locally first |
 | Making agent workflow the main story | Make the project itself the main story |
-| Stuffing project meaning into agent files | Keep the core context in shared project docs |
+| Stuffing project meaning into agent files | Keep core context in shared docs |
+| Turning directory README files into manual indexes | Keep README files as concise directory definitions |
 | Pretending unknowns are known | Mark open questions explicitly |
-| Maintaining separate `AGENTS.md` and `CLAUDE.md` bodies | Keep one `AGENTS.md` and use links or a last-resort copy only when required |
-| Letting task plans drift from approved design docs | Treat `docs/plans/*` as the higher-level source of truth unless the design is intentionally revised |
+| Maintaining parallel `AGENTS.md` and `CLAUDE.md` bodies | Keep one canonical body and point other files to it |
+| Assuming `AGENTS.md` must always be canonical | Choose canonical file based on actual host usage |
+| Letting implementation plans drift from approved design docs | Treat epic/function docs as the higher-level source of truth unless design is intentionally revised |
+| Treating `exchange/` as durable knowledge | Move lasting information into the appropriate `docs/` directory |
 
 ## Files and Templates
 
 Use the templates in this skill directory:
+
 - `templates/project-context.md`
-- `templates/tech-stack-investigate.md`
+- `templates/tech-stack.md`
 - `templates/AGENTS.draft.md`
+- `templates/docs/top-level-knowledge/README.md`
+- `templates/docs/epic-plans/README.md`
+- `templates/docs/func-design/README.md`
+- `templates/docs/impl-plans/README.md`
 
-Use the first two templates by default. Only use the `AGENTS.md` template when the user explicitly asks for agent-facing files. If a Claude-compatible filename is needed, alias `CLAUDE.md` to `AGENTS.md` using a symlink first, then a hard link if needed, instead of drafting a separate file.
+Use the first two templates by default under `docs/top-level-knowledge/` for new projects. In existing projects, the project-definition template may map to `project-context.md`, `prd.md`, or another clear equivalent name. Use the directory README templates when initializing the default docs taxonomy.
 
-If the user intends to enter WT-PM or file-based execution tracking after context stabilization, this skill may need to point to:
-- `docs/plans/*` for solution-level plans
-- `plans/todo_current.md`
-- `plans/workplans/*`
-- WT-PM / `planning-with-files` conventions
+Only use the agent-entry template when the user explicitly asks for agent-facing files. Rename the drafted file to the chosen canonical host file if needed, and make other requested host filenames point to it instead of duplicating content.
 
-Do not duplicate the full `wt-plan` or `planning-with-files` workflow here. Point to those conventions when execution tracking is needed; keep this skill focused on preparing the repository context and handoff state.
+If the user intends to enter WT-PM or file-based execution tracking after context stabilization, point to the relevant WT-PM / `planning-with-files` conventions, but keep this skill focused on preparing repository context and handoff state.
 
 For realistic usage patterns and conversation shape, see `usage-examples.md`.

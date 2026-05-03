@@ -67,6 +67,7 @@ Common repo facts:
 - Status lifecycle is often `UNPLANNED -> PLANNED -> DONE`
 - Workplan files live under `plans/workplans/<task_id>/`
 - Each task directory contains `task_plan.md`, `findings.md`, and `progress.md`
+- Executor agents may move tasks to `PLANNED` while preparing or executing work, but must not mark tasks `DONE` on their own. At completion, report verification evidence and tell the user the task is ready to mark `DONE`; only mark `DONE` after the user explicitly confirms that status transition.
 
 Use these fast trigger phrases:
 
@@ -124,7 +125,7 @@ Before ANY complex task:
 1. Ensure the repo uses `plans/workplans/<task_id>/` directories for task workplans
 2. Use `python ~/.claude/skills/wt-pm/scripts/plan_tracker.py --root . quick-plan --task-id <task_id>` to create the task directory and three files
 3. Ensure the current task's `task_plan.md`, `findings.md`, and `progress.md` exist under `plans/workplans/<task_id>/`
-4. Keep `plans/todo_current.md` in sync (`PLANNED` / `DONE` states)
+4. Keep `plans/todo_current.md` in sync for active work (`PLANNED`), but do not set `DONE` unless the user explicitly approves that status transition.
 5. **Re-read plan before decisions** — Refreshes goals in attention window
 6. **Update after each phase** — Mark complete, log errors
 
@@ -146,7 +147,7 @@ Filesystem = Disk (persistent, unlimited)
 | `plans/workplans/<task_id>/task_plan.md` | Phases, progress, decisions | After each phase |
 | `plans/workplans/<task_id>/findings.md` | Research, discoveries | After ANY discovery |
 | `plans/workplans/<task_id>/progress.md` | Session log, test results | Throughout session |
-| `plans/todo_current.md` | Task lifecycle | On every status change |
+| `plans/todo_current.md` | Task lifecycle | On user-approved status changes; executors report DONE readiness instead of self-marking DONE |
 
 ## Critical Rules
 

@@ -39,7 +39,7 @@
 
 ## Candidate Technical Direction
 - Summary:
-- Link to `tech-stack-investigate.md`:
+- Link to `tech-stack.md`:
 
 ## Confirmed Facts
 - 
