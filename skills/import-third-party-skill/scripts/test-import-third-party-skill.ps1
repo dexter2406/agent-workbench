@@ -3,7 +3,6 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $ImportScript = Join-Path $PSScriptRoot "import-third-party-skill.py"
-$VerifyScript = Join-Path $RepoRoot "skills\verify-registry-state\scripts\verify-registry-state.ps1"
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("import-third-party-skill-tests-" + [System.Guid]::NewGuid().ToString("N"))
 
 function Assert-True($Condition, $Message) {
@@ -20,9 +19,7 @@ try {
     $env:HOME = $FakeHome
 
     $RegistryMd = Join-Path $RepoRoot "registry\third-party-skills.md"
-    $RegistryLock = Join-Path $RepoRoot "registry\skills.lock.json"
     $RegistryMdBackup = Get-Content $RegistryMd -Raw
-    $RegistryLockBackup = Get-Content $RegistryLock -Raw
 
     $FakeInstaller = Join-Path $TempRoot "fake-installer.ps1"
     @'
@@ -37,72 +34,45 @@ Set-Content -Path (Join-Path $target "manifest.txt") -Value "fixture" -Encoding 
     @'
 # Third-party Skills
 
-| Skill | 宿主 | 来源 | 状态 | 备注 |
-|-------|------|------|------|------|
+| Skill | 来源 | 获取方式 | 备注 |
+|-------|------|----------|------|
 
 ## 说明
-- 机器可读元数据见 `registry/skills.lock.json`
+- 只登记第三方 skills，不登记本仓库自建 skills。
 '@ | Set-Content -Path $RegistryMd -Encoding UTF8
 
-    @'
-{
-  "version": 1,
-  "description": "Machine-readable metadata for third-party skills managed by this repository.",
-  "skills": []
-}
-'@ | Set-Content -Path $RegistryLock -Encoding UTF8
-
     & python $ImportScript `
-        --skill-name "frontend-design" `
-        --package "anthropics/skills@frontend-design" `
+        --skill-name "frontend-design-fixture" `
+        --package "anthropics/skills@frontend-design-fixture" `
         --skip-review `
         --approve `
         --install-command "powershell -ExecutionPolicy Bypass -File $FakeInstaller" | Out-Null
 
-    $lockState = Get-Content $RegistryLock -Raw | ConvertFrom-Json
-    $entry = $lockState.skills | Where-Object { $_.name -eq "frontend-design" } | Select-Object -First 1
-    Assert-True ($null -ne $entry) "install mode should register skill"
-    Assert-True ($entry.host -eq "codex-user") "install mode should use codex-user host"
-    Assert-True ($entry.localPath -like "*\.codex\skills\frontend-design") "install mode should record user path"
+    $vendoredPath = Join-Path $RepoRoot "skills\frontend-design-fixture\SKILL.md"
+    Assert-True (Test-Path $vendoredPath) "install mode should copy skill into repo skills"
 
     $mdText = Get-Content $RegistryMd -Raw
-    Assert-True ($mdText -match "installed in ~/.codex/skills") "markdown registry should show codex host"
+    Assert-True ($mdText.Contains("| frontend-design-fixture | ``anthropics/skills``")) "markdown registry should record source"
+    Assert-True ($mdText.Contains("skills/frontend-design-fixture/")) "markdown registry should record repo skill path"
+    Assert-True (-not ($mdText -match "registry/skills\.lock\.json")) "markdown registry should not mention removed lock file"
 
     $conflictOutput = & python $ImportScript `
-        --skill-name "frontend-design" `
-        --package "vercel-labs/agent-skills@frontend-design" `
+        --skill-name "frontend-design-fixture" `
+        --package "vercel-labs/agent-skills@frontend-design-fixture" `
         --skip-review `
         --approve `
         --install-command "powershell -ExecutionPolicy Bypass -File $FakeInstaller"
 
     Assert-True (($conflictOutput -join "`n") -match "Conflict detected\. Installation skipped\.") "same-name install should skip on conflict"
 
-    & python $ImportScript `
-        --skill-name "frontend-design" `
-        --package "anthropics/skills@frontend-design" `
-        --mode vendor `
-        --skip-review `
-        --approve `
-        --target-dir "skills" | Out-Null
-
-    $vendoredPath = Join-Path $RepoRoot "skills\frontend-design\SKILL.md"
-    Assert-True (Test-Path $vendoredPath) "vendor mode should copy skill into repo"
-
-    & powershell -ExecutionPolicy Bypass -File $VerifyScript | Out-Null
-    $mdRefreshed = Get-Content $RegistryMd -Raw
-    Assert-True ($mdRefreshed -match "vendored in this repo") "verify should preserve vendored host visibility"
-
     Write-Host "All import-third-party-skill tests passed."
 }
 finally {
-    if (Test-Path (Join-Path $RepoRoot "skills\frontend-design")) {
-        Remove-Item (Join-Path $RepoRoot "skills\frontend-design") -Recurse -Force
+    if (Test-Path (Join-Path $RepoRoot "skills\frontend-design-fixture")) {
+        Remove-Item (Join-Path $RepoRoot "skills\frontend-design-fixture") -Recurse -Force
     }
     if ($RegistryMdBackup) {
         Set-Content -Path $RegistryMd -Value $RegistryMdBackup -Encoding UTF8
-    }
-    if ($RegistryLockBackup) {
-        Set-Content -Path $RegistryLock -Value $RegistryLockBackup -Encoding UTF8
     }
     if (Test-Path $TempRoot) {
         Remove-Item $TempRoot -Recurse -Force

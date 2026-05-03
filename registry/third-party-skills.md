@@ -1,26 +1,25 @@
 ﻿# Third-party Skills
 
-| Skill | 来源平台 | 安装命令 | 状态 |
-|-------|----------|----------|------|
-| frontend-design | `anthropics` | `npx skills add anthropics/skills@frontend-design -g -y` | ✅ 已装 |
-| skill-creator | `anthropics` | — | ✅ 已装 |
-| grill-me | `mattpocock` | `npx skills add mattpocock/skills@grill-me -g -y` | ✅ 已装 |
-| to-prd | `mattpocock` | `npx skills add mattpocock/skills@to-prd -g -y` | ✅ 已装 |
-| vercel-react-best-practices | `vercel-labs` | `npx skills add vercel-labs/agent-skills@vercel-react-best-practices -g -y` | ✅ 已装 |
-| find-skills | `vercel-labs` | `npx skills add vercel-labs/skills@find-skills -g -y` | ✅ 已装 |
-| powershell-windows | `davila7` | `npx skills add davila7/claude-code-templates@powershell-windows -g -y` | ✅ 已装 |
-| continuous-learning | `affaan-m` | — | ✅ 已装 |
-| api-integration-builder | `daffy0208` | `npx skills add daffy0208/ai-dev-standards@api-integration-builder -g -y` | ✅ 已装 |
-| code-review | `supercent-io` | `npx skills add supercent-io/skills-template@code-review -g -y` | ✅ 已装 |
-| git-workflow | `supercent-io` | `npx skills add supercent-io/skills-template@git-workflow -g -y` | ✅ 已装 |
-| documentation-generator | `jorgealves` | `npx skills add jorgealves/agent_skills@documentation-generator -g -y` | ✅ 已装 |
-| prompt-optimizer | `daymade` | `npx skills add daymade/claude-code-skills@prompt-optimizer -g -y` | ✅ 已装 |
-| test-generator | `oimiragieo` | `npx skills add oimiragieo/agent-studio@test-generator -g -y` | ✅ 已装 |
+| Skill | 来源 | 获取方式 | 备注 |
+|-------|------|----------|------|
+| frontend-design | `anthropics/skills` | `npx skills add anthropics/skills@frontend-design -g -y` | 已放入 `skills/frontend-design/` |
+| skill-creator | `anthropics/skills` | 人工迁移 | 已放入 `skills/skill-creator/` |
+| grill-me | `mattpocock/skills` | `npx skills add mattpocock/skills@grill-me -g -y` | 已放入 `skills/grill-me/` |
+| to-prd | `mattpocock/skills` | `npx skills add mattpocock/skills@to-prd -g -y` | 已放入 `skills/to-prd/` |
+| vercel-react-best-practices | `vercel-labs/agent-skills` | `npx skills add vercel-labs/agent-skills@vercel-react-best-practices -g -y` | 已放入 `skills/vercel-react-best-practices/` |
+| find-skills | `vercel-labs/skills` | `npx skills add vercel-labs/skills@find-skills -g -y` | 已放入 `skills/find-skills/` |
+| powershell-windows | `davila7/claude-code-templates` | `npx skills add davila7/claude-code-templates@powershell-windows -g -y` | 已放入 `skills/powershell-windows/` |
+| continuous-learning | `affaan-m/everything-claude-code` | 人工迁移 | 已放入 `skills/continuous-learning/` |
+| api-integration-builder | `daffy0208/ai-dev-standards` | `npx skills add daffy0208/ai-dev-standards@api-integration-builder -g -y` | 已放入 `skills/api-integration-builder/` |
+| code-review | `supercent-io/skills-template` | `npx skills add supercent-io/skills-template@code-review -g -y` | 已放入 `skills/code-review/` |
+| git-workflow | `supercent-io/skills-template` | `npx skills add supercent-io/skills-template@git-workflow -g -y` | 已放入 `skills/git-workflow/` |
+| documentation-generator | `jorgealves/agent_skills` | `npx skills add jorgealves/agent_skills@documentation-generator -g -y` | 已放入 `skills/documentation-generator/` |
+| prompt-optimizer | `daymade/claude-code-skills` | `npx skills add daymade/claude-code-skills@prompt-optimizer -g -y` | 已放入 `skills/prompt-optimizer/` |
+| test-generator | `oimiragieo/agent-studio` | `npx skills add oimiragieo/agent-studio@test-generator -g -y` | 已放入 `skills/test-generator/` |
 
 ## 说明
-- 所有第三方 skills 均 vendor 到 `skills/` 目录，通过整目录 junction 对所有宿主可见
-- 安装命令详见 `registry/skills.lock.json`；根目录 `skills-lock.json` 由 npx 自动维护，为安装来源的权威记录
-- ✅ 已装：当前机器上已可用；⬜ 未装：已登记但未检测到
-- 自建 skills 不登记在此
 
+- 只登记第三方 skills，不登记本仓库自建 skills。
+- 第三方 skills 的正式内容直接放在 `skills/<name>/`。
+- 如需修改第三方 skill，直接修改 `skills/<name>/`；更新上游时先拉到临时位置，再人工对比合并。
 

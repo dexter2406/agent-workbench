@@ -1,45 +1,35 @@
-﻿# Registry 规范
+# Registry 规范
 
-## 定位
+`registry/` 是第三方资产的人工清单。它只回答“哪些资产是第三方、从哪里来、如何重新获取”，不记录宿主路径和机器状态。
 
-`registry/` 是第三方资产的登记入口。
-用途：记录你安装或 vendoring 的第三方工具，方便换机器、重装和状态校验。
+## Third-party Skills
 
-## 文件格式
+`registry/third-party-skills.md` 是第三方 skills 的唯一仓库内登记入口。
 
-### `registry/third-party-skills.md`
+格式：
 
 ```markdown
 # Third-party Skills
 
-| Skill | 宿主 | 来源 | 状态 | 备注 |
-|-------|------|------|------|------|
-| frontend-design | installed in ~/.codex/skills | `anthropics/skills` | ✅ 已装 | 已安装到 `C:/Users/name/.codex/skills/frontend-design`；上游元数据见 `registry/skills.lock.json` |
-| web-design | vendored in this repo | `vercel-labs/agent-skills` | ✅ 已装 | 已收录到 `skills/web-design/`；上游元数据见 `registry/skills.lock.json` |
-
-## 说明
-- ✅ 已装：当前机器上可用
-- ⬜ 未装：registry 已登记，但当前机器未检测到
-- `registry/skills.lock.json` 保存机器可读元数据，含来源、宿主、路径与更新命令
+| Skill | 来源 | 获取方式 | 备注 |
+|-------|------|----------|------|
+| frontend-design | `anthropics/skills` | `npx skills add anthropics/skills@frontend-design -g -y` | 已放入 `skills/frontend-design/` |
 ```
 
-### `registry/plugins.md`
+规则：
 
-```markdown
-# Plugins / MCP
+- 只登记第三方 skill，不登记本仓库自建 skill。
+- 第三方 skill 的正式内容直接放在 `skills/<name>/`。
+- `获取方式` 写 `npx skills add ...`、来源说明或人工迁移说明，保证未来能重新获取。
+- 不登记本地路径、宿主、安装状态、更新时间或机器可读 JSON。
+- 根目录 `skills-lock.json` 如果由 `npx skills` 生成，属于工具状态，继续保持 ignored。
 
-| Plugin | 安装方式 | 状态 |
-|--------|----------|------|
-| github-integration | `npx claude-code-templates@latest --mcp development/github-integration` | ⬜ 待装 |
+## Plugins
 
-## 说明
-- ✅ 已装
-- ⬜ 待装
-- ⏸️ 暂停
-```
+`registry/plugins.md` 保留为插件和 MCP 类资产清单。插件按安装单位登记，不展开插件内部附带的每个 skill、agent 或 command。
 
-## 生成要求
+插件清单可以包含状态列，因为插件是否启用通常取决于宿主配置，不等同于 `skills/` 下的正式内容。
 
-如果当前仓库里已有类似的清单文件（任何格式），将内容迁移到上述格式中，不要丢弃已有记录。
-如果没有，生成上述空模板即可。
+## 不再使用
 
+旧的 skills lock JSON 不参与当前 registry 设计。第三方 skills 只通过 `registry/third-party-skills.md` 做人工登记。

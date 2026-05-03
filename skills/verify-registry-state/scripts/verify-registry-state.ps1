@@ -1,11 +1,8 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
-$SkillsRegistry = Join-Path $RepoRoot "registry\third-party-skills.md"
-$SkillsLock = Join-Path $RepoRoot "registry\skills.lock.json"
 $PluginsRegistry = Join-Path $RepoRoot "registry\plugins.md"
-$AgentsLock = Join-Path $env:USERPROFILE ".agents\.skill-lock.json"
 $ClaudeSettings = Join-Path $env:USERPROFILE ".claude\settings.json"
 $ClaudeInstalledPlugins = Join-Path $env:USERPROFILE ".claude\plugins\installed_plugins.json"
 $CodexConfig = Join-Path $env:USERPROFILE ".codex\config.toml"
@@ -13,37 +10,6 @@ $CodexConfig = Join-Path $env:USERPROFILE ".codex\config.toml"
 function Get-JsonOrNull($path) {
     if (-not (Test-Path $path)) { return $null }
     return ([System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false, $true)).Trim([char]0xFEFF)) | ConvertFrom-Json
-}
-
-function Test-SkillInstalled($entry, $agentsState) {
-    $localPath = $null
-    if ($entry.localPath) {
-        if ([System.IO.Path]::IsPathRooted($entry.localPath)) {
-            $localPath = $entry.localPath
-        } else {
-            $localPath = Join-Path $RepoRoot $entry.localPath
-        }
-    }
-
-    if ($localPath -and (Test-Path $localPath)) {
-        return $true
-    }
-
-    if ($entry.host -eq "codex-user") {
-        $codexPath = Join-Path $env:USERPROFILE ".codex\skills\$($entry.name)"
-        return (Test-Path $codexPath)
-    }
-
-    if ($entry.host -eq "claude-user") {
-        $claudePath = Join-Path $env:USERPROFILE ".claude\skills\$($entry.name)"
-        return (Test-Path $claudePath)
-    }
-
-    if ($entry.host -eq ".agents" -and $agentsState -and $agentsState.skills) {
-        return ($null -ne $agentsState.skills.PSObject.Properties[$entry.name])
-    }
-
-    return $false
 }
 
 function Test-PluginInstalled($name, $pluginHost, $settingsState, $installedPluginsState, $codexText) {
@@ -78,7 +44,7 @@ function Update-MarkdownTableStatus($path, $resolver) {
             if (-not $statusIndex) {
                 $statusIndex = [Array]::IndexOf($parts, " 状态 ")
             }
-            if ($parts.Length -ge 6 -and $parts[1].Trim() -notin @("Skill", "Plugin", "-------", "--------")) {
+            if ($parts.Length -ge 6 -and $parts[1].Trim() -notin @("Plugin", "--------")) {
                 $name = $parts[1].Trim()
                 $assetHost = $parts[2].Trim()
                 $status = & $resolver $name $assetHost
@@ -94,26 +60,9 @@ function Update-MarkdownTableStatus($path, $resolver) {
     Set-Content -Path $path -Value $updated -Encoding UTF8
 }
 
-$skillsState = Get-JsonOrNull $SkillsLock
-$agentsState = Get-JsonOrNull $AgentsLock
 $settingsState = Get-JsonOrNull $ClaudeSettings
 $installedPluginsState = Get-JsonOrNull $ClaudeInstalledPlugins
 $codexText = if (Test-Path $CodexConfig) { Get-Content $CodexConfig -Raw } else { "" }
-
-$skillsMap = @{}
-if ($skillsState -and $skillsState.skills) {
-    foreach ($entry in $skillsState.skills) {
-        $skillsMap[$entry.name] = $entry
-    }
-}
-
-Update-MarkdownTableStatus $SkillsRegistry {
-    param($name, $assetHost)
-    $entry = $skillsMap[$name]
-    if (-not $entry) { return $null }
-    if (Test-SkillInstalled $entry $agentsState) { return "✅ 已装" }
-    return "⬜ 未装"
-}
 
 Update-MarkdownTableStatus $PluginsRegistry {
     param($name, $assetHost)
@@ -122,10 +71,4 @@ Update-MarkdownTableStatus $PluginsRegistry {
 }
 
 Write-Host "Registry 状态已刷新："
-Write-Host "  - $SkillsRegistry"
 Write-Host "  - $PluginsRegistry"
-
-
-
-
-

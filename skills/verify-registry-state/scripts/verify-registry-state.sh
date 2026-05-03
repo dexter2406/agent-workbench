@@ -2,52 +2,27 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SKILLS_MD="$REPO_ROOT/registry/third-party-skills.md"
-SKILLS_LOCK="$REPO_ROOT/registry/skills.lock.json"
 PLUGINS_MD="$REPO_ROOT/registry/plugins.md"
-AGENTS_LOCK="$HOME/.agents/.skill-lock.json"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 CLAUDE_INSTALLED_PLUGINS="$HOME/.claude/plugins/installed_plugins.json"
 CODEX_CONFIG="$HOME/.codex/config.toml"
 
-python - "$SKILLS_MD" "$SKILLS_LOCK" "$PLUGINS_MD" "$AGENTS_LOCK" "$CLAUDE_SETTINGS" "$CLAUDE_INSTALLED_PLUGINS" "$CODEX_CONFIG" "$REPO_ROOT" <<'PY'
+python - "$PLUGINS_MD" "$CLAUDE_SETTINGS" "$CLAUDE_INSTALLED_PLUGINS" "$CODEX_CONFIG" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-skills_md, skills_lock, plugins_md, agents_lock, claude_settings, claude_plugins, codex_config, repo_root = sys.argv[1:]
-repo_root = Path(repo_root)
+plugins_md, claude_settings, claude_plugins, codex_config = sys.argv[1:]
 
 def load_json(path):
     p = Path(path)
     if not p.exists():
-        return None
+        return {}
     return json.loads(p.read_text(encoding="utf-8-sig"))
 
-skills_state = load_json(skills_lock) or {"skills": []}
-agents_state = load_json(agents_lock) or {}
-settings_state = load_json(claude_settings) or {}
-plugins_state = load_json(claude_plugins) or {}
+settings_state = load_json(claude_settings)
+plugins_state = load_json(claude_plugins)
 codex_text = Path(codex_config).read_text(encoding="utf-8") if Path(codex_config).exists() else ""
-
-skill_map = {entry["name"]: entry for entry in skills_state.get("skills", [])}
-
-def skill_installed(name):
-    entry = skill_map.get(name)
-    if not entry:
-        return None
-    local_path = entry.get("localPath")
-    if local_path:
-        local = Path(local_path)
-        if not local.is_absolute():
-            local = repo_root / local_path
-        if local.exists():
-            return True
-    if entry.get("host") == "codex-user":
-        return (Path.home() / ".codex" / "skills" / name).exists()
-    if entry.get("host") == "claude-user":
-        return (Path.home() / ".claude" / "skills" / name).exists()
-    return name in (agents_state.get("skills") or {})
 
 def plugin_installed(name, host):
     if host == "Claude plugin":
@@ -58,7 +33,7 @@ def plugin_installed(name, host):
         return name in codex_text
     return False
 
-def update_table(path, resolver):
+def update_table(path):
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     out = []
     status_index = None
@@ -70,20 +45,17 @@ def update_table(path, resolver):
                     status_index = parts.index(" 状态 ")
                 except ValueError:
                     status_index = None
-            if len(parts) >= 6 and parts[1].strip() not in {"Skill", "Plugin", "-------", "--------"}:
+            if len(parts) >= 6 and parts[1].strip() not in {"Plugin", "--------"}:
                 name = parts[1].strip()
                 host = parts[2].strip()
-                status = resolver(name, host)
-                if status is not None and status_index is not None:
-                    parts[status_index] = f" {status} "
+                if status_index is not None:
+                    parts[status_index] = " ✅ 已装 " if plugin_installed(name, host) else " ⬜ 未装 "
                     line = "|".join(parts)
         out.append(line)
     Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
 
-update_table(skills_md, lambda name, host: "✅ 已装" if skill_installed(name) else "⬜ 未装")
-update_table(plugins_md, lambda name, host: "✅ 已装" if plugin_installed(name, host) else "⬜ 未装")
+update_table(plugins_md)
 PY
 
 echo "Registry 状态已刷新："
-echo "  - $SKILLS_MD"
 echo "  - $PLUGINS_MD"

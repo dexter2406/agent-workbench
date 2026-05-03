@@ -116,29 +116,28 @@ agent-workbench/
 
 ## 第三方资产登记
 
-第三方资产统一登记到 `registry/`，方便换机器时查阅、校验和重装。对于第三方 skills，当前优先把实际内容 vendoring 到仓库 `skills/` 下，再由 `install.sh` 暴露到已选宿主的全局 skills 目录。
+第三方资产统一登记到 `registry/`，方便换机器时查阅和重装。对于第三方 skills，正式内容直接放在仓库 `skills/` 下，再由安装器暴露到已选宿主的 skills 目录。
 
 当前按资产类型拆分：
 
-- `registry/third-party-skills.md`：第三方 skills 的人工清单（人工查阅入口）
-- `skills-lock.json`（根目录）：`npx skills` 自动维护，第三方 skills 的机器可读来源与哈希，**以此为准**
+- `registry/third-party-skills.md`：第三方 skills 的人工清单，记录名称、来源、获取方式和备注
 - `registry/plugins.md`：第三方 plugins / MCP 的人工清单
 
 记录原则：
 
 - 只登记第三方资产，不登记本仓库自建 skill
 - 以”安装单位”记录，不展开插件内每个附带文件
-- 优先写清来源平台、安装命令和当前状态
+- skills 清单不记录宿主路径和安装状态；plugins 清单可记录启用状态
 
-### 刷新第三方状态
+### 刷新插件状态
 
-当你切换机器、执行过更新、或怀疑环境漂移时，运行：
+当你切换机器、执行过插件更新、或怀疑插件环境漂移时，运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File skills/verify-registry-state/scripts/verify-registry-state.ps1
 ```
 
-它会检查 `registry/` 里登记的第三方 skills / plugins 是否在当前机器存在，并把状态统一刷新为 `✅ 已装` 或 `⬜ 未装`。如果某个 plugin 同时附带 agents 或 commands，也仍按 plugin 这个安装单位登记。
+它会检查 `registry/plugins.md` 里登记的 plugins 是否在当前机器存在，并把状态刷新为 `✅ 已装` 或 `⬜ 未装`。第三方 skills 以 `skills/<name>/` 中的正式内容为准，不维护状态列。
 
 ---
 
