@@ -2,8 +2,10 @@
 
 | Skill | 宿主 | 来源 | 状态 | 备注 |
 |-------|------|------|------|------|
-| vercel-react-best-practices | installed in ~/.agents/skills | `vercel-labs/agent-skills` | ✅ 已装 | 已安装到 `C:/Users/Xiao/.agents/skills/vercel-react-best-practices`；上游元数据见 `registry/skills.lock.json` |
-| frontend-design | installed in ~/.agents/skills | `anthropics/skills` | ✅ 已装 | 已安装到 `C:/Users/Xiao/.agents/skills/frontend-design`；上游元数据见 `registry/skills.lock.json` |
+| vercel-react-best-practices | vendored in this repo | `vercel-labs/agent-skills` | ✅ 已装 | 已收录到 `skills/vercel-react-best-practices/`；上游元数据见 `registry/skills.lock.json` |
+| frontend-design | vendored in this repo | `anthropics/skills` | ✅ 已装 | 已收录到 `skills/frontend-design/`；上游元数据见 `registry/skills.lock.json` |
+| grill-me | vendored in this repo | `mattpocock/skills` | ✅ 已装 | 已收录到 `skills/grill-me/`；上游元数据见 `registry/skills.lock.json` |
+| to-prd | vendored in this repo | `mattpocock/skills` | ✅ 已装 | 已收录到 `skills/to-prd/`；上游元数据见 `registry/skills.lock.json` |
 | powershell-windows | vendored in this repo | `davila7/claude-code-templates` | ✅ 已装 | 已收录到 `skills/powershell-windows/`；上游元数据见 `registry/skills.lock.json` |
 | find-skills | vendored in this repo | `vercel-labs/skills` | ✅ 已装 | 已收录到 `skills/find-skills/`；上游元数据见 `registry/skills.lock.json` |
 | continuous-learning | vendored in this repo | `affaan-m/everything-claude-code` | ✅ 已装 | 已收录到 `skills/continuous-learning/`；上游元数据见 `registry/skills.lock.json` |
