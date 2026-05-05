@@ -9,11 +9,13 @@ Route durable project hands-on knowledge to the right maintained home.
 
 This skill is the parent entrypoint for `docs/hands-on-knowledge/`. It classifies incoming material, decides which maintainer skill should handle it, and keeps the project knowledge layer coherent without duplicating the detailed rules owned by the child skills.
 
+Hands-on knowledge is a reverse-indexed memory for future problem solving. It should capture experience, traps, symptoms, root causes, and fast lookup paths that help a future agent when implementation or debugging starts to go wrong. It is not the place for ordinary forward design, implementation-plan detail, or facts that are obvious from reading the current code.
+
 Treat references to `docs/hadns-on-experience`, `hands-on-experience`, or similar wording as the existing `docs/hands-on-knowledge/` convention unless the repository clearly defines a different path.
 
 ## Knowledge Layer
 
-Use `docs/hands-on-knowledge/` for durable, practical lessons that future agents or developers are likely to need during implementation, debugging, verification, migration, recovery, or codebase orientation.
+Use `docs/hands-on-knowledge/` for durable, practical lessons that future agents or developers are likely to need during implementation, debugging, verification, migration, recovery, or codebase orientation, especially when they encounter a symptom and need a fast route to prior experience.
 
 Expected homes:
 
@@ -63,19 +65,20 @@ Do not force top-level project context, product background, or ordinary planning
 1. Infer the source material from the prompt, conversation, files mentioned, changed paths, plans, handoffs, logs, or notes.
 2. Confirm completion only when it is unclear whether the task, milestone, implementation, or debug investigation is done enough to preserve. Ask a short confirmation instead of curating unfinished work.
 3. Split mixed material into small candidate knowledge items.
-4. Classify each item as implementation, debug, both, top-level knowledge, mandatory rule, temporary planning, one-off, stale candidate, or unclear.
-5. For implementation items, load `impl-knowledge-maintainer` and follow its workflow and references.
-6. For debug items, load `debug-knowledge-maintainer` and follow its workflow and references.
-7. For both-routed items, keep the implementation-facing lesson and the diagnostic/recovery lesson separate so each child skill can maintain the narrowest durable home.
-8. Before changing maintained docs, search the relevant existing knowledge and prefer updating existing documents over creating new ones.
-9. Evaluate whether `docs/hands-on-knowledge/entry-map.md` needs a routing update after any material change under `docs/hands-on-knowledge/`.
-10. Report the result grouped by route.
+4. For each candidate, ask: "Would this help a future agent after they hit a confusing symptom, failed verification, wrong assumption, environment mismatch, or non-obvious implementation trap?" If no, route it to design/planning docs or ignore it.
+5. Classify each item as implementation, debug, both, top-level knowledge, mandatory rule, temporary planning, one-off, stale candidate, or unclear.
+6. For implementation items, load `impl-knowledge-maintainer` and follow its workflow and references.
+7. For debug items, load `debug-knowledge-maintainer` and follow its workflow and references.
+8. For both-routed items, keep the implementation-facing lesson and the diagnostic/recovery lesson separate so each child skill can maintain the narrowest durable home.
+9. Before changing maintained docs, search the relevant existing knowledge and prefer updating existing documents over creating new ones.
+10. Evaluate whether `docs/hands-on-knowledge/entry-map.md` needs a routing update after any material change under `docs/hands-on-knowledge/`.
+11. Report the result grouped by route.
 
 The child skills own detailed metadata, curation rules, destination-specific decisions, and final document shape. This manager should not copy their reference files into its own instructions; load the relevant child skill when the route is known.
 
 ## Durability Gate
 
-Preserve only knowledge likely to matter again:
+Preserve only knowledge likely to matter again as a reverse lookup or trap-avoidance aid:
 
 - repeated implementation or debug pattern
 - non-obvious runtime, platform, integration, or package behavior
@@ -84,7 +87,7 @@ Preserve only knowledge likely to matter again:
 - codebase entry path that materially shortens future implementation or diagnosis
 - project fact important enough to guide future planning or architecture decisions
 
-Ignore one-off logs, ordinary status updates, facts obvious from current code/tests, and per-session notes that do not change future behavior.
+Ignore one-off logs, ordinary status updates, facts obvious from current code/tests, straightforward plan/design details, and per-session notes that do not change future behavior. If the item would be better expressed as a requirement for the feature, put it in `docs/func-design/` or `docs/impl-plans/`, not hands-on knowledge.
 
 ## Final Report
 
