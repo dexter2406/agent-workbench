@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill Me Smartly"
+  short_description: "Prioritize plan-review questions and decisions"
+  default_prompt: "Use $grill-me-smartly to review this plan, prioritize the hardest questions, and return a decision summary."
