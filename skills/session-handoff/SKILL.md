@@ -46,7 +46,11 @@ These are near-misses that should not automatically route here:
 
 By default, write the handoff file under the current repository root:
 
-`docs/exchange/handoffs/session-handoff-YYYYMMDD-HHMM.md`
+`docs/exchange/handoffs/handoff-<slug>-MMDDhhmm.md`
+
+Use local time for `MMDDhhmm` with a 24-hour clock. Build `<slug>` from the current goal or workstream, not from a generic word like `session`; use 2-5 lowercase ASCII words joined with hyphens, such as `checkout-integration`, `e2e-order-history`, or `lark-webhook-debug`.
+
+Before writing, check whether the target filename already exists. If it exists, refine the slug with the distinguishing workstream instead of overwriting an existing handoff.
 
 If the user explicitly provides another destination, follow that instead.
 
@@ -118,7 +122,7 @@ Do not create, edit, or package any skill as part of this phase unless the user 
 
 1. Gather the current session facts from conversation history and the workspace.
 2. Identify the current goal, actual completion state, resolved issues, unresolved issues, and recommended next action.
-3. Write the handoff markdown file using the required template.
+3. Choose a descriptive slug, write the handoff markdown file using the required template, and save it as `handoff-<slug>-MMDDhhmm.md`.
 4. Report the saved file path.
 5. Return the continuation prompt in chat.
 6. Stop unless the user explicitly asks to continue into manual skill-candidate review.
