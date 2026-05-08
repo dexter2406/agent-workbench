@@ -1,16 +1,46 @@
 ---
 name: grill-me-smartly
-description: Review a plan by using the grill-me skill in the main session, asking a standing subagent to judge each proposed question as "非常有必要" or "需要再讨论" on behalf of the user, writing the subagent's classification notes under docs/exchange to save main-session context, and finally returning a combined decision packet to the user. Use when the user asks to review a plan with this exact workflow, mentions "grill-me-smartly", or asks for grill-me review plus subagent priority judgment and docs/exchange recording.
+description: Review a plan by running the grill-me skill in the main session while using a standing answer-only subagent to represent the user for codebase research and factual confirmation. The subagent must not use skills; it answers the main session's concrete questions from local investigation. Store compact answer notes under docs/exchange, then continue the grill-me decision tree with those answers.
 ---
 
 # Grill Me Smartly
 
 Use this skill to review a plan with a two-lane process:
 
-- The main session performs `grill-me`-style review and proposes sharp questions.
-- A standing subagent acts as the user's first-pass filter, classifying each question as `非常有必要` or `需要再讨论`.
+- The main session runs the actual `grill-me` skill and owns the decision-tree interview.
+- A standing subagent represents the user for answer gathering: it researches local files, confirms code facts, and answers the main session's concrete question.
 
-Keep the subagent's detailed reasoning in `docs/exchange` so the main session stays compact. Return the final decision packet to the user after combining the main-session review and subagent judgment.
+Keep the subagent's detailed research in `docs/exchange` so the main session stays compact. The main session then uses those answers to continue `grill-me` and decide what still needs the real user's input.
+
+## Loop Contract
+
+This is a loop, not a one-shot review.
+
+For each iteration:
+
+1. Main session proposes exactly one `grill-me` question.
+2. The same standing subagent answers that question when it can be researched locally.
+3. Main session records the answer and marks only that decision as resolved.
+4. Main session explicitly continues to the next `grill-me` question.
+
+After a subagent answer, say the equivalent of: "This first decision is resolved; continue to the second decision." Do not frame a single answered question as the whole review being complete.
+
+Only produce a final decision packet when one of these termination conditions is true:
+
+- The decision tree has no remaining material branches.
+- The next unresolved question requires the real user's preference, product intent, or risk tolerance.
+- The user explicitly asks to stop and summarize.
+- Further questions would be duplicates or low-value restatements of already resolved decisions.
+
+## Subagent Lifecycle
+
+Create or reuse one standing answer-only subagent for the whole review loop. Do not create a fresh subagent per question.
+
+- Start the subagent before the first locally answerable `grill-me` question.
+- Keep the same subagent open across all loop iterations so it preserves the plan context and prior answers.
+- For each new question, send the new question to that same subagent.
+- Close the subagent only after the loop reaches a termination condition and the main session has read or recorded the final answer note.
+- If the subagent fails or loses context, explicitly state that a replacement is being opened and pass it the accumulated exchange note before continuing.
 
 ## Workflow
 
@@ -19,35 +49,43 @@ Keep the subagent's detailed reasoning in `docs/exchange` so the main session st
    - If important context is available in local files, inspect it before asking.
    - Do not begin implementation while this review workflow is active.
 
-2. Use `grill-me` behavior in the main session.
-   - Review the plan relentlessly through a decision tree.
-   - Generate concrete questions that expose unclear goals, scope, dependencies, risks, acceptance criteria, rollout, rollback, and verification.
-   - Ask questions one at a time when directly interacting with the user.
+2. Use the real `grill-me` skill in the main session.
+   - Load and follow `skills/grill-me/SKILL.md`; do not approximate it as "`grill-me`-style".
+   - Interview the plan relentlessly through a decision tree.
+   - Ask one concrete question at a time.
+   - If a question can be answered by exploring the codebase, answer it through investigation before asking the user.
    - Include the main session's recommended answer when there is enough evidence.
 
-3. Open or reuse a standing subagent as the user's first-pass judge.
+3. Open or reuse one standing answer-only subagent.
    - Use a subagent only when the user explicitly requested this workflow or otherwise authorized subagents.
-   - Tell the subagent to classify proposed questions as `非常有必要` or `需要再讨论`.
-   - Ask it to act on behalf of the user only for triage, not to make final irreversible decisions.
-   - Give the subagent the plan, the proposed questions, and the classification rule; do not leak the expected result.
+   - Use the same subagent for every locally answerable question in the review loop.
+   - Tell the subagent it represents the user only for factual/codebase answers requested by the main session.
+   - Tell the subagent not to use any skills, even if a skill seems relevant.
+   - Give it the plan, the exact current question, and any local paths or context it should inspect.
+   - On later iterations, send only the next question plus any new context; do not spawn a new subagent just because the question changed.
+   - Ask for a concise answer, supporting evidence, uncertainty, and whether the answer changes the next grill-me decision.
+   - Do not ask it to classify question priority or make final irreversible decisions.
 
-4. Apply this classification rule.
-   - `非常有必要`: the question must be answered before a decision because it can change the plan, scope, architecture, data model, API contract, security posture, rollout strategy, acceptance criteria, or implementation order.
-   - `需要再讨论`: the question is useful but can be deferred, handled by a reversible default, or discussed after the next decision.
+4. Decide whether the real user still needs to answer.
+   - If the subagent's researched answer resolves the question, continue the `grill-me` decision tree in the main session.
+   - Treat that response as the end of the current loop iteration, not the end of the skill.
+   - Announce the transition clearly: the current decision is resolved, then move to the next decision.
+   - If the answer depends on product intent, preference, risk tolerance, or facts not discoverable locally, ask the real user one question.
+   - Do not convert the workflow into a batch priority review unless the user asks for that explicitly.
 
-5. Record the subagent result under `docs/exchange`.
+5. Record the subagent answer under `docs/exchange`.
    - Create a compact Markdown note in `docs/exchange/`, for example `docs/exchange/grill-me-smartly-YYYYMMDD-HHMMSS.md`.
-   - Store the plan snapshot, proposed questions, subagent classifications, short reasons, and recommended final decision.
+   - Store the plan snapshot, main-session question, subagent answer, inspected evidence, uncertainty, and the main session's next decision.
    - Keep the file concise; its job is to preserve context without loading the full subagent thread into the main session.
 
 6. Merge and return the decision.
    - Read the `docs/exchange` note before responding.
-   - Combine the main session's `grill-me` review with the subagent's classifications.
+   - Combine the main session's `grill-me` review with the subagent's researched answers.
    - Return the user-facing decision packet with:
-     - questions that are `非常有必要`,
-     - questions that `需要再讨论`,
-     - recommended answers or defaults,
-     - the final decision needed from the user,
+     - the current grill-me question or decision,
+     - the answer gathered by the subagent, if any,
+     - the main session's recommended answer or default,
+     - what still needs the real user's decision,
      - the path to the exchange note.
 
 ## Review Note Format
@@ -70,17 +108,22 @@ When writing a temporary review note, use this minimal structure:
 | --- | --- | --- |
 | Q1 | ... | ... |
 
-## Subagent Classification
-| ID | Classification | Reason |
+## Subagent Answer
+| ID | Answer | Evidence | Uncertainty |
 | --- | --- | --- |
-| Q1 | 非常有必要 | ... |
-| Q2 | 需要再讨论 | ... |
+| Q1 | ... | ... | ... |
 
 ## Decision Packet
-- 非常有必要: <questions or decisions>
-- 需要再讨论: <questions or decisions>
+- Resolved locally: <questions or decisions>
+- Needs real user: <questions or decisions>
 - Recommended decision: <what to ask or decide now>
 ```
+
+## Common Mistake
+
+Do not stop after the first answered question. `grill-me` intentionally asks one question at a time, so a successful first answer means the loop should advance, not finish. Use completion language only after checking the termination conditions above.
+
+Do not spawn one subagent per question. The subagent is standing for the entire review; per-question dispatch loses context and changes the intended workflow.
 
 ## Question Quality Bar
 

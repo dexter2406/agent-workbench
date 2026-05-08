@@ -1,4 +1,4 @@
 interface:
   display_name: "Grill Me Smartly"
-  short_description: "Prioritize plan-review questions and decisions"
-  default_prompt: "Use $grill-me-smartly to review this plan, prioritize the hardest questions, and return a decision summary."
+  short_description: "Run grill-me with an answer-only research agent"
+  default_prompt: "Use $grill-me-smartly to review this plan with the main session running $grill-me and an answer-only subagent researching concrete codebase questions without skills."
